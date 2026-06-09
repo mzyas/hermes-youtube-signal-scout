@@ -70,7 +70,6 @@ class FilterRankerTests(unittest.TestCase):
         self.assertEqual(result["videos"], [])
         self.assertIn("Shorts", result["rejected"][0]["reason"])
 
-
     def test_zero_threshold_is_respected(self):
         config = dict(self.config)
         config["topic_score_threshold"] = 0.0
@@ -90,5 +89,34 @@ class FilterRankerTests(unittest.TestCase):
         result = filter_and_rank(videos, config)
         self.assertEqual(len(result["videos"]), 1)
         self.assertLess(result["videos"][0]["topic_score"], 0.55)
+
+    def test_large_synonym_pool_does_not_suppress_relevant_video(self):
+        config = dict(self.config)
+        config["include_keywords"] = [
+            "AI泡沫", "AI bubble", "人工智能", "AIバブル", "生成AI", "GenAI", "ChatGPT",
+            "LLM", "AI投资", "tech bubble", "Nvidia", "GPU", "AI估值", "AI过度", "科技泡沫",
+        ]
+        config["target_tags"] = ["AI泡沫", "Nvidia", "GPU"]
+        config["exclude_keywords"] = ["广告", "推广", "sponsored"]
+        config["topic_score_threshold"] = 0.55
+        config["min_views"] = 0
+        videos = [
+            {
+                "video_id": "ai-bubble-1",
+                "title": "AI泡沫還是新時代？深度對比2000年互聯網泡沫 Nvidia GPU 投资",
+                "description": "AI bubble, LLM and GenAI valuation analysis without sponsor content.",
+                "tags": ["AI泡沫", "Nvidia", "GPU"],
+                "channel_id": "ch-ai",
+                "channel_title": "AI Market Research",
+                "published_at": "2026-06-08T10:00:00Z",
+                "duration_seconds": 1200,
+                "statistics": {"view_count": 50000, "like_count": 2000, "comment_count": 200},
+            }
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(len(result["videos"]), 1)
+        self.assertGreaterEqual(result["videos"][0]["topic_score"], 0.55)
+
+
 if __name__ == "__main__":
     unittest.main()

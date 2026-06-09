@@ -4,19 +4,56 @@ from __future__ import annotations
 
 from .quota_guard import estimate_discovery
 
+DEFAULT_MAX_QUERY_TERMS = 4
+DEFAULT_MAX_QUERY_CHARS = 80
 
-def build_query(include_keywords: list[str], exclude_keywords: list[str] | None = None) -> str:
-    include = [item.strip() for item in include_keywords or [] if item and item.strip()]
-    exclude = [item.strip() for item in exclude_keywords or [] if item and item.strip()]
-    include_part = "|".join(include)
-    exclude_part = " ".join(f"-{term}" for term in exclude)
-    return " ".join(part for part in [include_part, exclude_part] if part).strip()
+
+def _dedupe_terms(terms: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for term in terms or []:
+        cleaned = str(term).strip()
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            seen.add(key)
+            result.append(cleaned)
+    return result
+
+
+def build_query(
+    include_keywords: list[str],
+    exclude_keywords: list[str] | None = None,
+    max_terms: int = DEFAULT_MAX_QUERY_TERMS,
+    max_chars: int = DEFAULT_MAX_QUERY_CHARS,
+) -> str:
+    """Build a short recall query for YouTube search.list.
+
+    YouTube silently returns poor or empty results for long Boolean queries.
+    Exclude keywords are intentionally ignored here; they belong to local
+    filtering after hydration.
+    """
+    del exclude_keywords
+    selected: list[str] = []
+    for term in _dedupe_terms(include_keywords):
+        if len(selected) >= max_terms:
+            break
+        candidate = "|".join([*selected, term]) if selected else term
+        if selected and len(candidate) > max_chars:
+            break
+        selected.append(term)
+        if len(term) >= max_chars:
+            break
+    return "|".join(selected)
 
 
 def search_videos(client, config: dict) -> dict:
     max_pages = int(config.get("max_search_pages") or 1)
     max_results = min(50, int(config.get("max_results") or 25))
-    query = build_query(config.get("include_keywords") or [config.get("topic", "")], config.get("exclude_keywords") or [])
+    query = config.get("search_query") or build_query(
+        config.get("include_keywords") or [config.get("topic", "")],
+        max_terms=int(config.get("max_query_terms") or DEFAULT_MAX_QUERY_TERMS),
+        max_chars=int(config.get("max_query_chars") or DEFAULT_MAX_QUERY_CHARS),
+    )
     params = {
         "part": "snippet",
         "type": "video",

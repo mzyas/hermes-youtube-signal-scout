@@ -91,10 +91,10 @@ def _hard_reject_reason(video: dict, config: dict, flags: dict[str, bool]) -> st
     return None
 
 
-def _component_score(matches: list[str], denominator: int) -> float:
-    if denominator <= 0:
+def _component_score(matches: list[str], match_cap: int = 3) -> float:
+    if match_cap <= 0:
         return 0.0
-    return min(1.0, len(set(matches)) / denominator)
+    return min(1.0, len(set(matches)) / match_cap)
 
 
 def _freshness_score(video: dict, now: datetime) -> float:
@@ -120,13 +120,12 @@ def _engagement_score(video: dict) -> float:
 
 
 def _topic_score(video: dict, matches: dict[str, list[str]], config: dict, now: datetime) -> float:
-    include_count = max(1, len(config.get("include_keywords") or []))
-    tag_count = max(1, len((config.get("include_keywords") or []) + (config.get("target_tags") or [])))
+    match_cap = int(config.get("score_match_cap") or 3)
     channel_score = 1.0 if matches.get("channel_title") else 0.5
     score = (
-        0.30 * _component_score(matches.get("title", []), include_count)
-        + 0.25 * _component_score(matches.get("tags", []), tag_count)
-        + 0.20 * _component_score(matches.get("description", []), include_count)
+        0.30 * _component_score(matches.get("title", []), match_cap)
+        + 0.25 * _component_score(matches.get("tags", []), match_cap)
+        + 0.20 * _component_score(matches.get("description", []), match_cap)
         + 0.10 * channel_score
         + 0.10 * _freshness_score(video, now)
         + 0.05 * _engagement_score(video)
