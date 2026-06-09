@@ -71,5 +71,24 @@ class FilterRankerTests(unittest.TestCase):
         self.assertIn("Shorts", result["rejected"][0]["reason"])
 
 
+    def test_zero_threshold_is_respected(self):
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0.0
+        videos = [
+            {
+                "video_id": "weak1",
+                "title": "日銀 brief mention",
+                "description": "general market update",
+                "tags": [],
+                "channel_id": "ch1",
+                "channel_title": "Market Notes",
+                "published_at": "2026-06-08T10:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {"view_count": 2000},
+            }
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(len(result["videos"]), 1)
+        self.assertLess(result["videos"][0]["topic_score"], 0.55)
 if __name__ == "__main__":
     unittest.main()

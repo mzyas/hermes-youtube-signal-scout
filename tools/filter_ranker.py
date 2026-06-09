@@ -159,7 +159,8 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
     now = datetime.now(timezone.utc)
     accepted: list[dict] = []
     rejected: list[dict] = []
-    threshold = float(config.get("topic_score_threshold") or 0.55)
+    threshold_value = config.get("topic_score_threshold", 0.55)
+    threshold = 0.55 if threshold_value is None else float(threshold_value)
     for video in videos:
         flags = _quality_flags(video)
         reason = _hard_reject_reason(video, config, flags)
