@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hermes YouTube Signal Scout Video",
+  "type": "object",
+  "required": ["video_id", "url", "title", "channel_id", "channel_title", "published_at", "duration_seconds", "matched_fields", "topic_score", "quality_flags", "reason"],
+  "additionalProperties": true,
+  "properties": {
+    "video_id": {"type": "string"},
+    "url": {"type": "string"},
+    "title": {"type": "string"},
+    "channel_id": {"type": "string"},
+    "channel_title": {"type": "string"},
+    "published_at": {"type": "string"},
+    "description_excerpt": {"type": "string"},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "category_id": {"type": ["string", "null"]},
+    "duration_seconds": {"type": "integer", "minimum": 0},
+    "statistics": {"type": "object"},
+    "matched_fields": {"type": "object"},
+    "topic_score": {"type": "number", "minimum": 0, "maximum": 1},
+    "quality_flags": {"type": "object"},
+    "reason": {"type": "string"}
+  }
+}

@@ -1,0 +1,28 @@
+topic: "AWS operations entry level"
+mode: "discovery"
+include_keywords:
+  - "AWS運用"
+  - "AWS 運用保守"
+  - "クラウド運用"
+  - "インフラ運用"
+  - "AWS operations"
+  - "cloud operations"
+exclude_keywords:
+  - "夜勤"
+  - "ブラック"
+  - "案件紹介だけ"
+  - "広告"
+  - "切り抜き"
+target_tags:
+  - "AWS"
+  - "クラウド"
+  - "インフラ"
+  - "運用保守"
+region_code: "JP"
+relevance_language: "ja"
+order: "date"
+max_results: 20
+max_search_pages: 1
+min_views: 300
+include_shorts: false
+topic_score_threshold: 0.55

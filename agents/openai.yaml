@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hermes YouTube Signal Scout"
+  short_description: "Find and rank YouTube video signals for Hermes workflows."
+  default_prompt: "Use $hermes-youtube-signal-scout to find and rank YouTube videos for this topic."

@@ -1,0 +1,27 @@
+topic: "AI agent browser automation"
+mode: "discovery"
+include_keywords:
+  - "AI agent"
+  - "browser automation"
+  - "computer use"
+  - "web agent"
+  - "operator"
+  - "browser-use"
+exclude_keywords:
+  - "sponsored"
+  - "promo"
+  - "dropshipping"
+  - "get rich quick"
+target_tags:
+  - "AI agents"
+  - "automation"
+  - "LLM"
+  - "browser automation"
+region_code: "US"
+relevance_language: "en"
+order: "date"
+max_results: 25
+max_search_pages: 1
+min_views: 500
+include_shorts: false
+topic_score_threshold: 0.55

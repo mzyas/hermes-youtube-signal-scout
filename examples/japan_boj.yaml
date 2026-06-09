@@ -1,0 +1,32 @@
+topic: "日本央行加息"
+mode: "hybrid"
+include_keywords:
+  - "日本央行"
+  - "日银"
+  - "日銀"
+  - "BOJ"
+  - "植田和男"
+  - "利上げ"
+  - "金融政策"
+exclude_keywords:
+  - "阴谋论"
+  - "娛樂"
+  - "娱乐"
+  - "切り抜き"
+  - "shorts"
+target_tags:
+  - "日本経済"
+  - "金融政策"
+  - "日銀"
+  - "マクロ経済"
+  - "為替"
+region_code: "JP"
+relevance_language: "ja"
+published_after: "2026-06-01T00:00:00Z"
+order: "date"
+max_results: 30
+max_search_pages: 1
+min_views: 1000
+max_duration_seconds: 3600
+include_shorts: false
+topic_score_threshold: 0.55

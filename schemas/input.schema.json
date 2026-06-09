@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hermes YouTube Signal Scout Input",
+  "type": "object",
+  "required": ["topic"],
+  "additionalProperties": true,
+  "properties": {
+    "topic": {"type": "string", "minLength": 1},
+    "mode": {"type": "string", "enum": ["discovery", "channel_watch", "hybrid"], "default": "discovery"},
+    "include_keywords": {"type": "array", "items": {"type": "string"}, "default": []},
+    "exclude_keywords": {"type": "array", "items": {"type": "string"}, "default": []},
+    "target_tags": {"type": "array", "items": {"type": "string"}, "default": []},
+    "channel_ids": {"type": "array", "items": {"type": "string"}, "default": []},
+    "channel_urls": {"type": "array", "items": {"type": "string"}, "default": []},
+    "region_code": {"type": "string", "default": "JP"},
+    "relevance_language": {"type": "string", "default": "ja"},
+    "published_after": {"type": ["string", "null"]},
+    "published_before": {"type": ["string", "null"]},
+    "order": {"type": "string", "enum": ["date", "relevance", "viewCount", "rating"], "default": "date"},
+    "max_results": {"type": "integer", "minimum": 1, "maximum": 50, "default": 25},
+    "max_search_pages": {"type": "integer", "minimum": 1, "maximum": 5, "default": 1},
+    "min_views": {"type": "integer", "minimum": 0, "default": 0},
+    "max_duration_seconds": {"type": "integer", "minimum": 1, "default": 3600},
+    "include_shorts": {"type": "boolean", "default": false},
+    "topic_score_threshold": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.55},
+    "blocklisted_channel_ids": {"type": "array", "items": {"type": "string"}, "default": []}
+  }
+}
