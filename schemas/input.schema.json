@@ -23,6 +23,7 @@
     "max_duration_seconds": {"type": "integer", "minimum": 1, "default": 3600},
     "include_shorts": {"type": "boolean", "default": false},
     "topic_score_threshold": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.55},
-    "blocklisted_channel_ids": {"type": "array", "items": {"type": "string"}, "default": []}
+    "blocklisted_channel_ids": {"type": "array", "items": {"type": "string"}, "default": []},
+    "output_dir": {"type": ["string", "null"], "default": null}
   }
 }

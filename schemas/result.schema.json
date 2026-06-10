@@ -13,6 +13,14 @@
     "query_plan": {"type": "object"},
     "quota_usage_estimate": {"type": "object"},
     "videos": {"type": "array", "items": {"$ref": "video.schema.json"}},
-    "rejected": {"type": "array", "items": {"type": "object"}}
+    "rejected": {"type": "array", "items": {"type": "object"}},
+    "output_files": {
+      "type": "object",
+      "required": ["markdown", "json"],
+      "properties": {
+        "markdown": {"type": "string"},
+        "json": {"type": "string"}
+      }
+    }
   }
 }

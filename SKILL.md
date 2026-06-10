@@ -19,7 +19,7 @@ Use this skill to plan and execute YouTube video signal discovery for Hermes wor
 3. Hydrate all candidate video IDs with `videos.list(part=snippet,contentDetails,statistics,topicDetails)` before using tags, duration, statistics, or topic metadata.
 4. Apply hard filters for date window, blocklisted channels, minimum views, duration, Shorts policy, missing metadata, and `exclude_keywords`.
 5. Score remaining videos with local field matching and produce `topic_score`, `matched_fields`, `quality_flags`, and a short human-readable `reason`.
-6. Return structured JSON; do not present raw YouTube API responses as the final output unless the user asks for debugging details.
+6. Return structured JSON; when `output_dir` is configured, also write human-readable Markdown and matching JSON report files for downstream review.
 
 ## Required API Strategy
 
@@ -48,7 +48,7 @@ Load only the reference needed for the task:
 
 The skill folder includes a Python MVP runtime:
 
-- `tools/`: YouTube API client, discovery, hydration, channel watch, cache/quota helpers, duration parsing, text matching, and local filter/rank logic.
+- `tools/`: YouTube API client, discovery, hydration, channel watch, cache/quota helpers, duration parsing, text matching, local filter/rank logic, and Markdown/JSON report writing.
 - `schemas/`: JSON schema contracts for input config, normalized video objects, and final results.
 - `examples/`: YAML example configs for Japan BOJ, AI agent browser automation, and AWS operations topics.
 - `tests/`: Offline unit tests for duration parsing, query building, text matching, filter/rank, and schema JSON parsing.
@@ -64,3 +64,12 @@ Live YouTube API calls require `YOUTUBE_API_KEY` and should start with one examp
 ## Output Contract
 
 Return a JSON object containing run metadata, query plan, quota estimate, accepted videos, and rejected videos. Each accepted video should include `video_id`, `url`, `title`, `channel_id`, `channel_title`, `published_at`, `description_excerpt`, `tags`, `duration_seconds`, statistics, `matched_fields`, `topic_score`, `quality_flags`, and `reason`.
+
+Set `output_dir` in the runtime config to write two timestamped files after filtering:
+
+```text
+{output_dir}/{topic}_{timestamp}.md
+{output_dir}/{topic}_{timestamp}.json
+```
+
+The Markdown report includes the query plan, time window, quota estimate, accepted-video table, and rejected-video reasons. Table text escapes Markdown separators. The returned result includes `output_files.markdown` and `output_files.json`. Leave `output_dir` as `null` to keep the default JSON-only behavior.

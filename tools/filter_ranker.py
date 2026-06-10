@@ -177,7 +177,7 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
         accepted.append(_accepted_video(video, matches, score, flags))
     accepted.sort(key=lambda item: item["topic_score"], reverse=True)
     limit = int(config.get("max_results") or len(accepted) or 1)
-    return {
+    result = {
         "run_id": f"ytss_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}",
         "skill": "hermes-youtube-signal-scout",
         "topic": config.get("topic", ""),
@@ -195,3 +195,9 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
         "videos": accepted[:limit],
         "rejected": rejected,
     }
+    output_dir = config.get("output_dir")
+    if output_dir:
+        from .md_writer import write_markdown_report
+
+        write_markdown_report(result, str(output_dir), config)
+    return result
