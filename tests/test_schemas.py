@@ -3,14 +3,96 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SCHEMAS = ROOT / "schemas"
 
 
 class SchemaTests(unittest.TestCase):
     def test_schema_files_are_valid_json(self):
-        for path in (ROOT / "schemas").glob("*.json"):
+        for path in SCHEMAS.glob("*.json"):
             with self.subTest(path=path.name):
                 data = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual(data["type"], "object")
+
+    def test_input_and_result_instances_validate(self):
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema dependency is not installed")
+
+        input_schema = json.loads((SCHEMAS / "input.schema.json").read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator(
+            input_schema,
+            format_checker=jsonschema.FormatChecker(),
+        ).validate({
+            "topic": "signal",
+            "mode": "discovery",
+            "published_after": "2026-06-01T00:00:00Z",
+        })
+
+        result_schema = json.loads((SCHEMAS / "result.schema.json").read_text(encoding="utf-8"))
+        video_schema = json.loads((SCHEMAS / "video.schema.json").read_text(encoding="utf-8"))
+        resolver = jsonschema.RefResolver(
+            base_uri=SCHEMAS.as_uri() + "/",
+            referrer=result_schema,
+            store={(SCHEMAS / "video.schema.json").as_uri(): video_schema},
+        )
+        jsonschema.Draft202012Validator(
+            result_schema,
+            resolver=resolver,
+            format_checker=jsonschema.FormatChecker(),
+        ).validate({
+            "run_id": "run",
+            "skill": "hermes-youtube-signal-scout",
+            "version": "0.2.9",
+            "topic": "signal",
+            "mode": "discovery",
+            "created_at": "2026-06-10T00:00:00Z",
+            "query_plan": {"search_queries": ["signal"], "channels": []},
+            "quota_usage_estimate": {
+                "search_list_calls": 1,
+                "videos_list_calls": 1,
+                "channels_list_calls": 0,
+                "playlist_items_list_calls": 0,
+                "estimated_quota_cost": 101,
+            },
+            "videos": [],
+            "rejected": [],
+            "run_stats": {
+                "candidate_count": 0,
+                "deduplicated_count": 0,
+                "cache_hits": 0,
+                "hydrated_count": 0,
+                "accepted_count": 0,
+                "rejected_count": 0,
+                "api_calls": {},
+            },
+            "warnings": [],
+            "report_markdown": "# signal",
+            "report_json": {
+                "topic": "signal",
+                "generated_at": "2026-06-10T00:00:00Z",
+                "search_queries": ["signal"],
+                "time_range": {"published_after": None, "published_before": None},
+                "quota": {"estimated_cost": 101, "search_calls": 1, "video_calls": 1},
+                "accepted_count": 0,
+                "rejected_count": 0,
+                "videos": [],
+                "rejected": [],
+                "run_stats": {},
+                "warnings": [],
+            },
+        })
+
+        weekly_input_schema = json.loads(
+            (SCHEMAS / "weekly-input.schema.json").read_text(encoding="utf-8")
+        )
+        jsonschema.Draft202012Validator(
+            weekly_input_schema,
+            format_checker=jsonschema.FormatChecker(),
+        ).validate({
+            "topics": ["global economy", {"topic": "AI chips"}],
+            "email": {"recipients": ["analyst@example.com"]},
+        })
 
 
 if __name__ == "__main__":

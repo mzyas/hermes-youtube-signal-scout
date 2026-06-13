@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hermes YouTube Signal Scout Weekly Result",
+  "type": "object",
+  "required": [
+    "generated_at",
+    "schedule",
+    "status",
+    "topic_count",
+    "successful_topic_count",
+    "failed_topic_count",
+    "runs",
+    "failures",
+    "email_handoff"
+  ],
+  "properties": {
+    "generated_at": {"type": "string", "format": "date-time"},
+    "schedule": {"type": "object"},
+    "status": {"type": "string", "enum": ["success", "partial", "failed"]},
+    "topic_count": {"type": "integer", "minimum": 1},
+    "successful_topic_count": {"type": "integer", "minimum": 0},
+    "failed_topic_count": {"type": "integer", "minimum": 0},
+    "runs": {"type": "array", "items": {"type": "object"}},
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["topic", "error"],
+        "properties": {
+          "topic": {"type": "string"},
+          "error": {
+            "type": "object",
+            "required": ["type", "message"],
+            "properties": {
+              "type": {"type": "string"},
+              "message": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "email_handoff": {
+      "type": "object",
+      "required": ["action", "recipients", "subject", "markdown_body", "sections", "html_requirements"],
+      "properties": {
+        "action": {"const": "render_html_and_send_email"},
+        "recipients": {"type": "array", "items": {"type": "string"}},
+        "subject": {"type": "string"},
+        "markdown_body": {"type": "string"},
+        "sections": {"type": "array", "items": {"type": "object"}},
+        "html_requirements": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

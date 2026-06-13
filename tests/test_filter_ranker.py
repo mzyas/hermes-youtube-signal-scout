@@ -1,6 +1,7 @@
 import unittest
+from datetime import datetime, timezone
 
-from tools.filter_ranker import filter_and_rank
+from tools.filter_ranker import _freshness_score, filter_and_rank
 
 
 class FilterRankerTests(unittest.TestCase):
@@ -116,6 +117,135 @@ class FilterRankerTests(unittest.TestCase):
         result = filter_and_rank(videos, config)
         self.assertEqual(len(result["videos"]), 1)
         self.assertGreaterEqual(result["videos"][0]["topic_score"], 0.55)
+
+    def test_score_components_and_future_date_behavior(self):
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0
+        config["min_views"] = 0
+        videos = [
+            {
+                "video_id": "future",
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": "ch1",
+                "channel_title": "",
+                "published_at": "2999-01-01T00:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {},
+            },
+            {
+                "video_id": "current",
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": "trusted",
+                "channel_title": "",
+                "published_at": "2026-06-08T10:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {},
+            },
+        ]
+        config["trusted_channel_ids"] = ["trusted"]
+        result = filter_and_rank(videos, config)
+        self.assertIn("未来", result["rejected"][0]["reason"])
+        self.assertEqual(result["videos"][0]["score_components"]["channel"], 0.1)
+        self.assertEqual(result["videos"][0]["score_components"]["engagement"], 0.0)
+
+    def test_reject_possible_ads_is_configurable(self):
+        video = {
+            "video_id": "ad",
+            "title": "日銀 sponsored",
+            "description": "",
+            "tags": [],
+            "channel_id": "ch1",
+            "channel_title": "",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0
+        config["reject_possible_ads"] = False
+        self.assertEqual(len(filter_and_rank([video], config)["videos"]), 1)
+        config["reject_possible_ads"] = True
+        self.assertIn("广告", filter_and_rank([video], config)["rejected"][0]["reason"])
+
+    def test_rejects_entertainment_when_enabled(self):
+        video = {
+            "video_id": "entertainment",
+            "title": "日銀 reaction 搞笑",
+            "description": "",
+            "tags": ["日銀"],
+            "channel_id": "ch1",
+            "channel_title": "",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0
+        config["reject_entertainment"] = True
+        result = filter_and_rank([video], config)
+        self.assertIn("娱乐", result["rejected"][0]["reason"])
+
+    def test_target_tags_only_matches_video_tags(self):
+        config = dict(self.config)
+        config["include_keywords"] = []
+        config["target_tags"] = ["日本経済"]
+        config["topic_score_threshold"] = 0
+        config["min_views"] = 0
+        video = {
+            "video_id": "tag-only",
+            "title": "Market update",
+            "description": "",
+            "tags": ["日本経済"],
+            "channel_id": "ch1",
+            "channel_title": "",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(result["videos"][0]["video_id"], "tag-only")
+
+    def test_explicit_time_window_gives_full_freshness(self):
+        now = datetime(2026, 6, 14, tzinfo=timezone.utc)
+        config = {
+            "published_after": "2026-06-07T00:00:00Z",
+            "published_before": "2026-06-14T00:00:00Z",
+        }
+        oldest = {"published_at": "2026-06-07T00:00:00Z"}
+        middle = {"published_at": "2026-06-10T12:00:00Z"}
+        newest = {"published_at": "2026-06-14T00:00:00Z"}
+        self.assertAlmostEqual(_freshness_score(oldest, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(middle, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(newest, config, now), 1.0)
+
+    def test_thirty_day_window_decays_after_first_seven_days(self):
+        now = datetime(2026, 6, 14, tzinfo=timezone.utc)
+        config = {
+            "published_after": "2026-05-15T00:00:00Z",
+            "published_before": "2026-06-14T00:00:00Z",
+        }
+        newest = {"published_at": "2026-06-14T00:00:00Z"}
+        seven_days_old = {"published_at": "2026-06-07T00:00:00Z"}
+        middle_of_decay = {"published_at": "2026-05-26T12:00:00Z"}
+        oldest = {"published_at": "2026-05-15T00:00:00Z"}
+        self.assertAlmostEqual(_freshness_score(newest, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(seven_days_old, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(middle_of_decay, config, now), 0.75)
+        self.assertAlmostEqual(_freshness_score(oldest, config, now), 0.50)
+
+    def test_freshness_uses_rolling_30_days_without_start_date(self):
+        now = datetime(2026, 6, 14, tzinfo=timezone.utc)
+        config = {"published_before": "2026-06-14T00:00:00Z"}
+        oldest = {"published_at": "2026-05-15T00:00:00Z"}
+        middle = {"published_at": "2026-05-30T00:00:00Z"}
+        newest = {"published_at": "2026-06-14T00:00:00Z"}
+        self.assertAlmostEqual(_freshness_score(oldest, config, now), 0.0)
+        self.assertAlmostEqual(_freshness_score(middle, config, now), 0.5)
+        self.assertAlmostEqual(_freshness_score(newest, config, now), 1.0)
 
 
 if __name__ == "__main__":

@@ -1,92 +1,54 @@
-# Filtering And Scoring
+# Filtering and Scoring
 
 ## Hard Filters
 
-Reject clearly unsuitable videos before scoring:
+Candidates are rejected for missing IDs/snippets, blocklisted channels, invalid
+or out-of-window dates, future publication dates, low views, excessive duration,
+disabled Shorts, excluded keywords, suspected ads/promotions, and entertainment
+or low-information content.
+
+Shorts detection uses duration plus `#shorts`. Configure the duration boundary
+with `shorts_max_duration_seconds`.
+
+Advertisement and entertainment rejection are enabled by default through
+`reject_possible_ads` and `reject_entertainment`.
+
+## Topic Match
+
+Matching is case-insensitive and checks title, description, tags, channel title,
+and topic categories. If both `include_keywords` and `target_tags` are empty,
+the topic is used as the include keyword. A target-tags-only configuration is
+valid and matches video tags.
+
+## Score
+
+Each accepted video exposes weighted `score_components`:
 
 ```text
-- Outside the configured publish-time window
-- Channel is in the blocklist
-- View count is below min_views
-- Duration exceeds max_duration_seconds
-- include_shorts=false and the video appears to be a Short
-- Title, description, or tags match exclude_keywords
-- Missing videoId or required snippet fields
+title       0.30
+tags        0.25
+description 0.20
+channel     0.10
+freshness   0.10
+engagement  0.05
 ```
 
-## Field Matching
+Channel points require a channel-title keyword match or a channel ID listed in
+`trusted_channel_ids`; there is no unconditional baseline. Missing statistics
+produce zero engagement rather than an error.
 
-Match include keywords and target tags against:
+For a publication window of seven days or less, every video that passes the
+time-window hard filter receives the full raw freshness score of `1.0`.
 
-```text
-title
-description
-tags
-channel_title
-topicDetails.topicCategories
-```
+For a longer window, including a 30-day search:
 
-Record matches in `matched_fields` so downstream agents can explain why a video passed.
+- videos from the most recent seven days receive `1.0`;
+- older videos decay linearly;
+- a video at the start of the requested window retains `0.50`.
 
-## Topic Score
+The default configuration creates a rolling seven-day `published_after`. If
+that default is disabled entirely, freshness falls back to linear position
+within a rolling 30-day window.
 
-Use this MVP scoring model unless the user supplies a different one:
-
-```text
-topic_score =
-  0.30 * title_keyword_score
-+ 0.25 * tag_score
-+ 0.20 * description_score
-+ 0.10 * channel_reliability_score
-+ 0.10 * freshness_score
-+ 0.05 * engagement_score
-```
-
-Recommended field weights:
-
-```text
-title:       0.30
-tags:        0.25
-description: 0.20
-channel:     0.10
-freshness:   0.10
-engagement:  0.05
-```
-
-A video should pass when it matches required include keywords in title, description, tags, or channel title; avoids exclude keywords; satisfies configured date, region, language, duration, view count, and channel constraints; and reaches `topic_score_threshold`.
-
-## Shorts Detection
-
-YouTube Data API may not directly identify Shorts. For MVP, mark a video as a Short when:
-
-```text
-duration_seconds <= 60
-```
-
-Optionally strengthen the signal when title, description, or tags contain `#shorts`.
-
-Represent the flag as:
-
-```json
-"quality_flags": {
-  "is_short": true
-}
-```
-
-## Low-Quality Or Ad-Like Signals
-
-MVP should use rules rather than complex ML. Mark `possible_ad` or `low_signal` when title or description contains terms such as:
-
-```text
-sponsored
-promo
-affiliate
-限时优惠
-免费领取
-暴富
-副業で月収
-稼げる
-案件紹介だけ
-```
-
-Use the `reason` field to explain whether these flags caused rejection or only lowered confidence.
+`topic_score` is the sum of components, clamped to `[0, 1]`. Accepted videos are
+sorted by score and then limited by `max_results`.

@@ -1,75 +1,122 @@
 ---
 name: hermes-youtube-signal-scout
-description: Discover, hydrate, filter, and rank YouTube video signals for a user-defined topic, keyword group, tag set, channel pool, or time window using YouTube Data API v3. Use when Codex needs to find YouTube videos about a topic, monitor channels or topics, filter videos by keyword/tag/channel/language/region/date/duration/view count, build candidate video lists for Hermes-agent summarization, trend analysis, reports, archiving, or downstream retrieval.
+description: Discover, hydrate, filter, rank, and monitor YouTube video signals for a topic, keyword/tag set, channel pool, or time window using YouTube Data API v3. Use for topic discovery, recurring channel monitoring, candidate lists for Hermes analysis, trend reports, archives, and downstream retrieval.
 ---
 
 # Hermes YouTube Signal Scout
 
-## Purpose
+Use the bundled runtime for deterministic YouTube discovery. Do not treat raw
+`search.list` results as final records: hydrate candidates, apply local filters,
+and rank them before returning results.
 
-Use this skill to plan and execute YouTube video signal discovery for Hermes workflows. Treat YouTube search as candidate recall only: always hydrate videos, apply local filters, rank by topic fit, and return structured JSON for downstream analysis.
+## Run
 
-## Workflow
+1. Build a YAML or JSON config from the user request.
+2. Select `discovery`, `channel_watch`, or `hybrid`.
+3. Estimate the likely quota cost and keep broad search pages low.
+4. Run:
 
-1. Clarify the topic, keywords/tags, channel scope, region/language, time window, and result limit from the user request.
-2. Choose a discovery mode:
-   - Use `search.list(type=video)` for new topic discovery.
-   - Use channel uploads polling for repeated monitoring of known channels.
-   - Combine both for hybrid runs.
-3. Hydrate all candidate video IDs with `videos.list(part=snippet,contentDetails,statistics,topicDetails)` before using tags, duration, statistics, or topic metadata.
-4. Apply hard filters for date window, blocklisted channels, minimum views, duration, Shorts policy, missing metadata, and `exclude_keywords`.
-5. Score remaining videos with local field matching and produce `topic_score`, `matched_fields`, `quality_flags`, and a short human-readable `reason`.
-6. Return structured JSON; when `output_dir` is configured, also write human-readable Markdown and matching JSON report files for downstream review.
-
-## Required API Strategy
-
-`search.list` cannot precisely search arbitrary `snippet.tags[]`; use it only to recall candidates through `q`, `topicId`, `videoCategoryId`, time, region, and language parameters. Fetch tags with `videos.list(part=snippet)` after video IDs are known.
-
-Always set `type=video` for `search.list`; otherwise YouTube may return channels or playlists.
-
-Use simple Boolean query construction in `q` when useful:
-
-```text
-keywordA|keywordB -excludedTerm
+```powershell
+python -m tools.runner --config examples/ai_agents.yaml
 ```
 
-Encode `|` as `%7C` in URLs. Prefer `q + target_tags + include_keywords + local classifier` for natural-language topics rather than relying on `topicId`.
+Live calls require `YOUTUBE_API_KEY`. The stable Python interface is:
+
+```python
+from tools.runner import run
+
+result = run(config)
+```
+
+The runtime resolves channels, searches candidates, uses the local cache,
+hydrates video metadata, filters and ranks results, and returns both structured
+data and a canonical Markdown report in `report_markdown`. It optionally writes
+matching Markdown and JSON files when `output_dir` is configured.
+
+For externally scheduled multi-topic runs, use:
+
+```powershell
+python -m tools.weekly_runner --config examples/weekly.yaml
+```
+
+The stable weekly Python interface is
+`tools.weekly_runner.run_weekly(config, client=None)`.
+
+## Weekly Automation
+
+The external scheduler invokes the weekly interface, for example every Monday
+morning. The Skill performs search and report assembly but does not schedule
+itself or send email directly. It returns `email_handoff`; the agent must convert
+`markdown_body` to semantic HTML, preserve every video's information, and send
+it through the available email tool to `recipients`.
+
+Only perform HTML rendering and email delivery after an explicit
+`run_weekly()`/weekly CLI invocation. A normal `run()` result must never trigger
+HTML rendering or email delivery.
+
+See `references/weekly-automation.md` for the handoff contract.
+
+## Clarification Gate
+
+Before running, ask only when clarification materially improves precision:
+
+- If the topic is broad, ask which specific economic, market, industry, policy,
+  or company angle matters most.
+- If the intended time horizon is unclear and could change the result set, ask
+  whether to search the latest 7 days or 30 days.
+
+Ask both questions together when both are needed. Do not ask about regions,
+language, channels, Shorts, advertisements, or entertainment preferences.
+
+Apply these defaults without asking:
+
+- latest 7 days;
+- region tier 1: `US`, `JP`, `HK`, `GB`;
+- region tier 2 if needed: `KR`, `TW`, `DE`, `FR`, `CA`;
+- unrestricted language;
+- exclude Shorts, advertisements, promotions, and entertainment content.
+
+Only override regions when the user explicitly requests another geography. If
+the request is already specific enough, run immediately without clarification.
+See `references/intake-guidance.md` for the decision rules and question template.
+
+## Final Response
+
+After a successful run, use one canonical presentation:
+
+- Default: output `result["report_markdown"]` verbatim.
+- When the user explicitly asks for JSON, output the complete
+  `result["report_json"]` object as a JSON code block.
+- Every JSON video must retain `rank`, `topic_score`, `title`, `url`,
+  `channel_title`, `published_at`, `duration_seconds`, and `view_count`.
+- Do not summarize, rewrite, translate, reorder, or omit video fields.
+- Do not add an introduction, conclusion, emoji, numbered cards, recommendations,
+  caveats, or follow-up questions.
+- Do not replace the Markdown table with a custom list format.
+- Use the full runtime result only for downstream processing or debugging.
+
+## Operating Rules
+
+- Use `search.list(type=video)` only for candidate recall.
+- Fetch tags, duration, statistics, and topic metadata with `videos.list`.
+- Keep `exclude_keywords` in local filtering; long negative API queries reduce recall.
+- Prefer `channel_watch` for recurring known-channel monitoring.
+- Report API errors clearly; do not silently return partial results.
+- Preserve the runtime's structured JSON for downstream processing.
+- Present `report_markdown` verbatim by default, or complete `report_json` when
+  JSON is explicitly requested.
 
 ## References
 
-Load only the reference needed for the task:
+- `references/input-output-schema.md`: configuration, CLI, and output contract.
+- `references/youtube-api-strategy.md`: API modes, quota, retries, and cache strategy.
+- `references/filtering-scoring.md`: hard filters, score components, and quality flags.
+- `references/intake-guidance.md`: when and how to ask for missing search intent.
+- `references/weekly-automation.md`: scheduled batch and email handoff contract.
 
-- `references/youtube-api-strategy.md`: API constraints, discovery/channel-watch flows, quota guidance.
-- `references/input-output-schema.md`: input configuration shape and output JSON examples.
-- `references/filtering-scoring.md`: hard filters, field weights, `topic_score`, Shorts and low-quality/ad rules.
-
-
-## MVP Runtime
-
-The skill folder includes a Python MVP runtime:
-
-- `tools/`: YouTube API client, discovery, hydration, channel watch, cache/quota helpers, duration parsing, text matching, local filter/rank logic, and Markdown/JSON report writing.
-- `schemas/`: JSON schema contracts for input config, normalized video objects, and final results.
-- `examples/`: YAML example configs for Japan BOJ, AI agent browser automation, and AWS operations topics.
-- `tests/`: Offline unit tests for duration parsing, query building, text matching, filter/rank, and schema JSON parsing.
-
-Use the offline tests before live API work:
+## Validation
 
 ```powershell
 python -m unittest discover -s tests -p 'test_*.py'
+python C:\Users\mzyas\.codex\skills\.system\skill-creator\scripts\quick_validate.py .
 ```
-
-Live YouTube API calls require `YOUTUBE_API_KEY` and should start with one example config and one search page.
-
-## Output Contract
-
-Return a JSON object containing run metadata, query plan, quota estimate, accepted videos, and rejected videos. Each accepted video should include `video_id`, `url`, `title`, `channel_id`, `channel_title`, `published_at`, `description_excerpt`, `tags`, `duration_seconds`, statistics, `matched_fields`, `topic_score`, `quality_flags`, and `reason`.
-
-Set `output_dir` in the runtime config to write two timestamped files after filtering:
-
-```text
-{output_dir}/{topic}_{timestamp}.md
-{output_dir}/{topic}_{timestamp}.json
-```
-
-The Markdown report includes the query plan, time window, quota estimate, accepted-video table, and rejected-video reasons. Table text escapes Markdown separators. The returned result includes `output_files.markdown` and `output_files.json`. Leave `output_dir` as `null` to keep the default JSON-only behavior.

@@ -1,6 +1,11 @@
 import unittest
 
-from tools.search_discovery import build_query, search_videos
+from tools.search_discovery import (
+    build_query,
+    resolve_region_codes,
+    resolve_region_tiers,
+    search_videos,
+)
 
 
 class FakeClient:
@@ -48,6 +53,30 @@ class QueryBuildingTests(unittest.TestCase):
         self.assertEqual(params["type"], "video")
         self.assertNotIn("-广告", params["q"])
         self.assertLessEqual(len(params["q"]), 80)
+
+    def test_default_zones_expand_without_language_filter(self):
+        client = FakeClient()
+        result = search_videos(
+            client,
+            {
+                "topic": "global markets",
+                "zones": ["east_asia", "europe", "north_america"],
+                "max_search_pages": 1,
+            },
+        )
+        self.assertEqual(
+            resolve_region_codes({"zones": ["east_asia", "europe", "north_america"]}),
+            ["JP", "KR", "TW", "HK", "GB", "DE", "FR", "US", "CA"],
+        )
+        self.assertEqual(len(client.calls), 9)
+        self.assertNotIn("relevanceLanguage", client.calls[0][1])
+        self.assertEqual(result["page_count"], 9)
+
+    def test_default_region_priority_tiers(self):
+        self.assertEqual(
+            resolve_region_tiers({}),
+            [["US", "JP", "HK", "GB"], ["KR", "TW", "DE", "FR", "CA"]],
+        )
 
 
 if __name__ == "__main__":
