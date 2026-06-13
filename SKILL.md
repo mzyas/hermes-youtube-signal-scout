@@ -33,6 +33,53 @@ hydrates video metadata, filters and ranks results, and returns both structured
 data and a canonical Markdown report in `report_markdown`. It optionally writes
 matching Markdown and JSON files when `output_dir` is configured.
 
+For externally scheduled multi-topic runs, use:
+
+```powershell
+python -m tools.weekly_runner --config examples/weekly.yaml
+```
+
+The stable weekly Python interface is
+`tools.weekly_runner.run_weekly(config, client=None)`.
+
+## Weekly Automation
+
+The external scheduler invokes the weekly interface, for example every Monday
+morning. The Skill performs search and report assembly but does not schedule
+itself or send email directly. It returns `email_handoff`; the agent must convert
+`markdown_body` to semantic HTML, preserve every video's information, and send
+it through the available email tool to `recipients`.
+
+Only perform HTML rendering and email delivery after an explicit
+`run_weekly()`/weekly CLI invocation. A normal `run()` result must never trigger
+HTML rendering or email delivery.
+
+See `references/weekly-automation.md` for the handoff contract.
+
+## Clarification Gate
+
+Before running, ask only when clarification materially improves precision:
+
+- If the topic is broad, ask which specific economic, market, industry, policy,
+  or company angle matters most.
+- If the intended time horizon is unclear and could change the result set, ask
+  whether to search the latest 7 days or 30 days.
+
+Ask both questions together when both are needed. Do not ask about regions,
+language, channels, Shorts, advertisements, or entertainment preferences.
+
+Apply these defaults without asking:
+
+- latest 7 days;
+- region tier 1: `US`, `JP`, `HK`, `GB`;
+- region tier 2 if needed: `KR`, `TW`, `DE`, `FR`, `CA`;
+- unrestricted language;
+- exclude Shorts, advertisements, promotions, and entertainment content.
+
+Only override regions when the user explicitly requests another geography. If
+the request is already specific enough, run immediately without clarification.
+See `references/intake-guidance.md` for the decision rules and question template.
+
 ## Final Response
 
 After a successful run, use one canonical presentation:
@@ -64,6 +111,8 @@ After a successful run, use one canonical presentation:
 - `references/input-output-schema.md`: configuration, CLI, and output contract.
 - `references/youtube-api-strategy.md`: API modes, quota, retries, and cache strategy.
 - `references/filtering-scoring.md`: hard filters, score components, and quality flags.
+- `references/intake-guidance.md`: when and how to ask for missing search intent.
+- `references/weekly-automation.md`: scheduled batch and email handoff contract.
 
 ## Validation
 

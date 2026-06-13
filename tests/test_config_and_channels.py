@@ -22,6 +22,8 @@ class ConfigAndChannelTests(unittest.TestCase):
     def test_topic_becomes_match_term_when_keywords_are_empty(self):
         config = apply_defaults({"topic": "fallback topic", "cache_enabled": False})
         self.assertEqual(config["include_keywords"], ["fallback topic"])
+        self.assertTrue(config["reject_possible_ads"])
+        self.assertTrue(config["reject_entertainment"])
 
     def test_default_search_uses_rolling_seven_day_window(self):
         before = datetime.now(timezone.utc) - timedelta(days=7, seconds=2)

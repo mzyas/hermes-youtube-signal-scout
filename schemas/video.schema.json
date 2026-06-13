@@ -40,10 +40,11 @@
     },
     "quality_flags": {
       "type": "object",
-      "required": ["is_short", "possible_ad", "low_signal"],
+      "required": ["is_short", "possible_ad", "possible_entertainment", "low_signal"],
       "properties": {
         "is_short": {"type": "boolean"},
         "possible_ad": {"type": "boolean"},
+        "possible_entertainment": {"type": "boolean"},
         "low_signal": {"type": "boolean"}
       }
     },

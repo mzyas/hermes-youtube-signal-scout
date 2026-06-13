@@ -17,10 +17,17 @@ lookback_days: 7
 zones: [east_asia, europe, north_america]
 region_code: null
 region_codes: []
+region_priority_tiers:
+  - [US, JP, HK, GB]
+  - [KR, TW, DE, FR, CA]
 relevance_language: null
-max_results: 25
+max_results: 10
+target_results: 10
 max_search_pages: 1
+adaptive_max_search_pages: 1
 include_shorts: false
+reject_possible_ads: true
+reject_entertainment: true
 output_dir: null
 cache_enabled: true
 ```
@@ -37,12 +44,21 @@ The default zone preset searches representative markets in East Asia
 (`US`, `CA`). No `relevanceLanguage` is sent by default. Set legacy
 `region_code`, or explicit `region_codes`, to override the zone preset.
 
+Default search priority:
+
+1. `US`, `JP`, `HK`, `GB`
+2. `KR`, `TW`, `DE`, `FR`, `CA`
+
+The second tier runs only when the first tier produces fewer than
+`target_results`.
+
 Useful optional controls:
 
 - `candidates_per_page`, `channel_max_results`, `hydration_batch_size`
+- `target_results`, `adaptive_max_search_pages`
 - `cache_path`, `video_cache_ttl_hours`
 - `retry_attempts`, `retry_backoff_seconds`, `timeout_seconds`
-- `shorts_max_duration_seconds`, `reject_possible_ads`
+- `shorts_max_duration_seconds`, `reject_possible_ads`, `reject_entertainment`
 - `trusted_channel_ids`, `score_match_cap`
 
 ## Interfaces
@@ -61,6 +77,20 @@ result = run(config)
 ```
 
 Pass `client=` to inject a compatible client for tests.
+
+For a scheduler-driven weekly batch:
+
+```powershell
+python -m tools.weekly_runner --config examples/weekly.yaml
+```
+
+The weekly config accepts shared `defaults`, a non-empty `topics` array,
+descriptive `schedule` metadata, and optional email recipients. Its result
+contains all per-topic runs plus `email_handoff` for agent-side HTML rendering
+and delivery. See `schemas/weekly-input.schema.json`,
+`schemas/weekly-result.schema.json`, and `references/weekly-automation.md`.
+The normal `tools.runner.run()` result never contains an email action and must
+not trigger HTML rendering or delivery.
 
 ## Output
 

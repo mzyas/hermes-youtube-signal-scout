@@ -1,0 +1,27 @@
+schedule:
+  cron: "0 9 * * 1"
+  timezone: Asia/Tokyo
+
+defaults:
+  lookback_days: 7
+  target_results: 10
+  max_results: 10
+
+topics:
+  - topic: 全球宏观经济与股市
+    include_keywords:
+      - global economy
+      - stock market
+      - central bank
+  - topic: 人工智能产业与芯片
+    include_keywords:
+      - artificial intelligence
+      - semiconductor
+      - data center
+
+email:
+  recipients:
+    - analyst@example.com
+  subject: YouTube 每周信号报告
+
+continue_on_error: true

@@ -102,7 +102,8 @@ def apply_defaults(config: dict) -> dict:
     merged.setdefault("retry_attempts", 2)
     merged.setdefault("retry_backoff_seconds", 1.0)
     merged.setdefault("shorts_max_duration_seconds", 60)
-    merged.setdefault("reject_possible_ads", False)
+    merged.setdefault("reject_possible_ads", True)
+    merged.setdefault("reject_entertainment", True)
     merged.setdefault("trusted_channel_ids", [])
     lookback_days = merged.get("lookback_days")
     if not merged.get("published_after") and lookback_days:

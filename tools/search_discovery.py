@@ -9,6 +9,10 @@ ZONE_REGION_CODES = {
     "europe": ["GB", "DE", "FR"],
     "north_america": ["US", "CA"],
 }
+DEFAULT_REGION_TIERS = [
+    ["US", "JP", "HK", "GB"],
+    ["KR", "TW", "DE", "FR", "CA"],
+]
 
 
 def _dedupe_terms(terms: list[str]) -> list[str]:
@@ -62,8 +66,28 @@ def resolve_region_codes(config: dict) -> list[str | None]:
     return _dedupe_terms(codes) or [None]
 
 
-def search_videos(client, config: dict) -> dict:
-    max_pages = int(config.get("max_search_pages") or 1)
+def resolve_region_tiers(config: dict) -> list[list[str | None]]:
+    if config.get("region_codes") or config.get("region_code"):
+        return [resolve_region_codes(config)]
+    explicit_tiers = config.get("region_priority_tiers") or []
+    if explicit_tiers:
+        tiers = [_dedupe_terms(tier) for tier in explicit_tiers]
+        return [tier for tier in tiers if tier]
+    return [list(tier) for tier in DEFAULT_REGION_TIERS]
+
+
+def search_videos(
+    client,
+    config: dict,
+    page_tokens: dict[str, str] | None = None,
+    max_pages_override: int | None = None,
+    region_codes_override: list[str | None] | None = None,
+) -> dict:
+    max_pages = (
+        int(max_pages_override)
+        if max_pages_override is not None
+        else int(config.get("max_search_pages") or 1)
+    )
     candidates_per_page = min(50, int(config.get("candidates_per_page") or 50))
     query = config.get("search_query") or build_query(
         config.get("include_keywords") or [config.get("topic", "")],
@@ -88,9 +112,13 @@ def search_videos(client, config: dict) -> dict:
             base_params[key] = config[snake]
     video_ids: list[str] = []
     pages = 0
-    region_codes = resolve_region_codes(config)
+    region_codes = region_codes_override or resolve_region_codes(config)
+    next_page_tokens: dict[str, str] = {}
     for region_code in region_codes:
-        page_token = None
+        token_key = region_code or "__global__"
+        page_token = (page_tokens or {}).get(token_key)
+        if page_tokens is not None and not page_token:
+            continue
         region_pages = 0
         while region_pages < max_pages:
             request_params = dict(base_params)
@@ -108,6 +136,8 @@ def search_videos(client, config: dict) -> dict:
             page_token = payload.get("nextPageToken")
             if not page_token:
                 break
+        if page_token:
+            next_page_tokens[token_key] = page_token
     return {
         "video_ids": video_ids,
         "query_plan": {
@@ -117,4 +147,5 @@ def search_videos(client, config: dict) -> dict:
             **base_params,
         },
         "page_count": pages,
+        "next_page_tokens": next_page_tokens,
     }

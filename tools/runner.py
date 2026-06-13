@@ -17,7 +17,7 @@ from .errors import ConfigurationError, SignalScoutError
 from .filter_ranker import filter_and_rank
 from .md_writer import build_json_report, render_markdown_report, write_markdown_report
 from .quota_guard import summarize_calls
-from .search_discovery import search_videos
+from .search_discovery import resolve_region_tiers, search_videos
 from .video_hydrator import hydrate_videos
 from .youtube_client import YouTubeClient
 
@@ -136,10 +136,20 @@ def run(config: dict, client=None) -> dict:
         "channels": [],
     }
     mode = config["mode"]
+    discovery = None
+    region_tiers = resolve_region_tiers(config)
+    searched_tiers = 0
+    searched_region_codes: list[str] = []
     if mode in {"discovery", "hybrid"}:
-        discovery = search_videos(counted, config)
+        discovery = search_videos(
+            counted,
+            config,
+            region_codes_override=region_tiers[0],
+        )
+        searched_tiers = 1
         candidate_ids.extend(discovery["video_ids"])
         query_plan.update(discovery["query_plan"])
+        searched_region_codes.extend(discovery["query_plan"].get("region_codes", []))
         query_plan["search_page_count"] = discovery["page_count"]
     if mode in {"channel_watch", "hybrid"}:
         channel_ids, channels = _discover_channels(counted, config)
@@ -155,7 +165,76 @@ def run(config: dict, client=None) -> dict:
     runtime_config["quota_usage_estimate"] = summarize_calls(counted.calls)
     runtime_config["output_dir"] = None
     result = filter_and_rank(videos, runtime_config)
+    target_results = int(config.get("target_results") or 10)
+    next_page_tokens = (discovery or {}).get("next_page_tokens") or {}
+    total_search_pages = (discovery or {}).get("page_count") or 0
+    while (
+        mode in {"discovery", "hybrid"}
+        and len(result["videos"]) < target_results
+        and searched_tiers < len(region_tiers)
+    ):
+        extra = search_videos(
+            counted,
+            config,
+            region_codes_override=region_tiers[searched_tiers],
+        )
+        searched_tiers += 1
+        total_search_pages += extra["page_count"]
+        searched_region_codes.extend(extra["query_plan"].get("region_codes", []))
+        next_page_tokens.update(extra["next_page_tokens"])
+        raw_candidate_count += len(extra["video_ids"])
+        extra_ids = [
+            video_id for video_id in extra["video_ids"] if video_id not in candidate_ids
+        ]
+        if not extra_ids:
+            continue
+        candidate_ids.extend(extra_ids)
+        extra_videos, extra_cache_hits, extra_hydrated = _hydrate_with_cache(
+            counted, extra_ids, config, warnings
+        )
+        cache_hits += extra_cache_hits
+        hydrated += extra_hydrated
+        videos.extend(extra_videos)
+        runtime_config["quota_usage_estimate"] = summarize_calls(counted.calls)
+        result = filter_and_rank(videos, runtime_config)
+    adaptive_pages_used = 0
+    max_adaptive_pages = int(config.get("adaptive_max_search_pages") or 1)
+    while (
+        mode in {"discovery", "hybrid"}
+        and len(result["videos"]) < target_results
+        and adaptive_pages_used < max_adaptive_pages
+        and next_page_tokens
+    ):
+        extra = search_videos(
+            counted,
+            config,
+            page_tokens=next_page_tokens,
+            max_pages_override=1,
+        )
+        adaptive_pages_used += 1
+        total_search_pages += extra["page_count"]
+        next_page_tokens = extra["next_page_tokens"]
+        extra_ids = [
+            video_id for video_id in extra["video_ids"] if video_id not in candidate_ids
+        ]
+        raw_candidate_count += len(extra["video_ids"])
+        if not extra_ids:
+            continue
+        candidate_ids.extend(extra_ids)
+        extra_videos, extra_cache_hits, extra_hydrated = _hydrate_with_cache(
+            counted, extra_ids, config, warnings
+        )
+        cache_hits += extra_cache_hits
+        hydrated += extra_hydrated
+        videos.extend(extra_videos)
+        runtime_config["quota_usage_estimate"] = summarize_calls(counted.calls)
+        result = filter_and_rank(videos, runtime_config)
     result["query_plan"] = query_plan
+    result["query_plan"]["region_codes"] = _dedupe(searched_region_codes)
+    result["query_plan"]["region_priority_tiers"] = region_tiers
+    result["query_plan"]["region_tiers_searched"] = searched_tiers
+    result["query_plan"]["search_page_count"] = total_search_pages
+    result["query_plan"]["adaptive_search_pages"] = adaptive_pages_used
     result["quota_usage_estimate"] = summarize_calls(counted.calls)
     result["run_stats"] = {
         "candidate_count": raw_candidate_count,
@@ -164,8 +243,14 @@ def run(config: dict, client=None) -> dict:
         "hydrated_count": hydrated,
         "accepted_count": len(result["videos"]),
         "rejected_count": len(result["rejected"]),
+        "target_results": target_results,
+        "target_met": len(result["videos"]) >= target_results,
         "api_calls": dict(counted.calls),
     }
+    if len(result["videos"]) < target_results:
+        warnings.append(
+            f"Only {len(result['videos'])} video(s) passed the fixed score threshold; target was {target_results}."
+        )
     result["warnings"] = warnings
     if config.get("output_dir"):
         write_markdown_report(result, str(config["output_dir"]), config)

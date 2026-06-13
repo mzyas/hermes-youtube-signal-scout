@@ -61,6 +61,19 @@ class FakeYouTubeClient:
         raise AssertionError(endpoint)
 
 
+class RegionalFakeYouTubeClient(FakeYouTubeClient):
+    def __init__(self, regional_ids):
+        super().__init__()
+        self.regional_ids = regional_ids
+
+    def get(self, endpoint, params):
+        if endpoint == "search":
+            self.calls.append((endpoint, dict(params)))
+            ids = self.regional_ids.get(params.get("regionCode"), [])
+            return {"items": [{"id": {"videoId": value}} for value in ids]}
+        return super().get(endpoint, params)
+
+
 def base_config(**overrides):
     config = {
         "topic": "signal",
@@ -71,12 +84,80 @@ def base_config(**overrides):
         "max_results": 50,
         "zones": [],
         "region_code": "JP",
+        "region_priority_tiers": [],
     }
     config.update(overrides)
     return config
 
 
 class RunnerTests(unittest.TestCase):
+    def test_region_priority_stops_after_first_tier_when_target_is_met(self):
+        client = RegionalFakeYouTubeClient({
+            "US": [f"us-{index}" for index in range(10)],
+            "JP": [],
+            "HK": [],
+            "GB": [],
+            "KR": ["should-not-search"],
+        })
+        result = run(
+            base_config(
+                region_code=None,
+                region_priority_tiers=[
+                    ["US", "JP", "HK", "GB"],
+                    ["KR", "TW", "DE", "FR", "CA"],
+                ],
+                target_results=10,
+            ),
+            client=client,
+        )
+
+        searched_regions = [
+            params["regionCode"]
+            for endpoint, params in client.calls
+            if endpoint == "search"
+        ]
+        self.assertEqual(searched_regions, ["US", "JP", "HK", "GB"])
+        self.assertEqual(result["query_plan"]["region_tiers_searched"], 1)
+        self.assertEqual(result["query_plan"]["region_codes"], searched_regions)
+        self.assertTrue(result["run_stats"]["target_met"])
+
+    def test_region_priority_expands_to_second_tier_when_target_is_short(self):
+        client = RegionalFakeYouTubeClient({
+            "US": ["us-1", "us-2"],
+            "JP": ["jp-1"],
+            "HK": [],
+            "GB": [],
+            "KR": ["kr-1", "kr-2"],
+            "TW": ["tw-1"],
+            "DE": ["de-1"],
+            "FR": ["fr-1"],
+            "CA": ["ca-1", "ca-2"],
+        })
+        result = run(
+            base_config(
+                region_code=None,
+                region_priority_tiers=[
+                    ["US", "JP", "HK", "GB"],
+                    ["KR", "TW", "DE", "FR", "CA"],
+                ],
+                target_results=10,
+            ),
+            client=client,
+        )
+
+        searched_regions = [
+            params["regionCode"]
+            for endpoint, params in client.calls
+            if endpoint == "search"
+        ]
+        self.assertEqual(
+            searched_regions,
+            ["US", "JP", "HK", "GB", "KR", "TW", "DE", "FR", "CA"],
+        )
+        self.assertEqual(result["query_plan"]["region_tiers_searched"], 2)
+        self.assertEqual(result["query_plan"]["region_codes"], searched_regions)
+        self.assertTrue(result["run_stats"]["target_met"])
+
     def test_discovery_pages_and_hydration_batches_use_actual_counts(self):
         ids = [f"v{i}" for i in range(75)]
         client = FakeYouTubeClient([ids[:50], ids[50:]])
@@ -89,6 +170,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(result["quota_usage_estimate"]["estimated_quota_cost"], 202)
         self.assertIn("| # | 得分 | 标题 | 频道 | 发布日期 | 时长 | 播放量 |", result["report_markdown"])
         self.assertEqual(len(result["report_json"]["videos"]), 50)
+        self.assertNotIn("email_handoff", result)
         video_calls = [params for endpoint, params in client.calls if endpoint == "videos"]
         self.assertEqual([len(call["id"].split(",")) for call in video_calls], [50, 25])
 

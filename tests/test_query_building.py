@@ -1,6 +1,11 @@
 import unittest
 
-from tools.search_discovery import build_query, resolve_region_codes, search_videos
+from tools.search_discovery import (
+    build_query,
+    resolve_region_codes,
+    resolve_region_tiers,
+    search_videos,
+)
 
 
 class FakeClient:
@@ -66,6 +71,12 @@ class QueryBuildingTests(unittest.TestCase):
         self.assertEqual(len(client.calls), 9)
         self.assertNotIn("relevanceLanguage", client.calls[0][1])
         self.assertEqual(result["page_count"], 9)
+
+    def test_default_region_priority_tiers(self):
+        self.assertEqual(
+            resolve_region_tiers({}),
+            [["US", "JP", "HK", "GB"], ["KR", "TW", "DE", "FR", "CA"]],
+        )
 
 
 if __name__ == "__main__":

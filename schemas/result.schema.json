@@ -22,9 +22,12 @@
         "region_code": {"type": ["string", "null"]},
         "region_codes": {"type": "array", "items": {"type": "string"}},
         "zones": {"type": "array", "items": {"type": "string"}},
+        "region_priority_tiers": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}},
+        "region_tiers_searched": {"type": "integer", "minimum": 0},
         "relevance_language": {"type": ["string", "null"]},
         "order": {"type": "string"},
-        "search_page_count": {"type": "integer", "minimum": 0}
+        "search_page_count": {"type": "integer", "minimum": 0},
+        "adaptive_search_pages": {"type": "integer", "minimum": 0}
       }
     },
     "quota_usage_estimate": {
@@ -54,7 +57,7 @@
     },
     "run_stats": {
       "type": "object",
-      "required": ["candidate_count", "deduplicated_count", "cache_hits", "hydrated_count", "accepted_count", "rejected_count", "api_calls"],
+      "required": ["candidate_count", "deduplicated_count", "cache_hits", "hydrated_count", "accepted_count", "rejected_count", "target_results", "target_met", "api_calls"],
       "properties": {
         "candidate_count": {"type": "integer", "minimum": 0},
         "deduplicated_count": {"type": "integer", "minimum": 0},
@@ -62,6 +65,8 @@
         "hydrated_count": {"type": "integer", "minimum": 0},
         "accepted_count": {"type": "integer", "minimum": 0},
         "rejected_count": {"type": "integer", "minimum": 0},
+        "target_results": {"type": "integer", "minimum": 1},
+        "target_met": {"type": "boolean"},
         "api_calls": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
       }
     },

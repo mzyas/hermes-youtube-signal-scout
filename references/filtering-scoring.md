@@ -4,10 +4,14 @@
 
 Candidates are rejected for missing IDs/snippets, blocklisted channels, invalid
 or out-of-window dates, future publication dates, low views, excessive duration,
-disabled Shorts, excluded keywords, and optionally suspected ads.
+disabled Shorts, excluded keywords, suspected ads/promotions, and entertainment
+or low-information content.
 
 Shorts detection uses duration plus `#shorts`. Configure the duration boundary
 with `shorts_max_duration_seconds`.
+
+Advertisement and entertainment rejection are enabled by default through
+`reject_possible_ads` and `reject_entertainment`.
 
 ## Topic Match
 

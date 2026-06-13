@@ -152,7 +152,7 @@ class FilterRankerTests(unittest.TestCase):
         self.assertEqual(result["videos"][0]["score_components"]["channel"], 0.1)
         self.assertEqual(result["videos"][0]["score_components"]["engagement"], 0.0)
 
-    def test_reject_possible_ads_is_opt_in(self):
+    def test_reject_possible_ads_is_configurable(self):
         video = {
             "video_id": "ad",
             "title": "日銀 sponsored",
@@ -166,9 +166,28 @@ class FilterRankerTests(unittest.TestCase):
         }
         config = dict(self.config)
         config["topic_score_threshold"] = 0
+        config["reject_possible_ads"] = False
         self.assertEqual(len(filter_and_rank([video], config)["videos"]), 1)
         config["reject_possible_ads"] = True
         self.assertIn("广告", filter_and_rank([video], config)["rejected"][0]["reason"])
+
+    def test_rejects_entertainment_when_enabled(self):
+        video = {
+            "video_id": "entertainment",
+            "title": "日銀 reaction 搞笑",
+            "description": "",
+            "tags": ["日銀"],
+            "channel_id": "ch1",
+            "channel_title": "",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0
+        config["reject_entertainment"] = True
+        result = filter_and_rank([video], config)
+        self.assertIn("娱乐", result["rejected"][0]["reason"])
 
     def test_target_tags_only_matches_video_tags(self):
         config = dict(self.config)

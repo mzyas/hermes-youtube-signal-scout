@@ -10,6 +10,13 @@
 `max_results` limits final ranked output. Candidate recall is controlled by
 `max_search_pages`, `candidates_per_page`, and `channel_max_results`.
 
+The default target is 10 accepted videos at a fixed `topic_score_threshold` of
+`0.45`. The runtime first searches `US`, `JP`, `HK`, and `GB`. If fewer than 10
+videos pass, it adds `KR`, `TW`, `DE`, `FR`, and `CA`. If the target is still
+unmet, it follows available regional page tokens for additional pages, hydrates
+only new IDs, and re-ranks the combined pool. It never lowers the threshold
+automatically. `adaptive_max_search_pages` controls the extra page rounds.
+
 YouTube accepts one `regionCode` per search request, not a geographic zone.
 The runtime expands `east_asia`, `europe`, and `north_america` into representative
 country codes, searches each scope, then deduplicates video IDs. Language is

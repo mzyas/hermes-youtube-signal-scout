@@ -18,6 +18,19 @@ LOW_QUALITY_TERMS = [
     "稼げる",
     "案件紹介だけ",
 ]
+ENTERTAINMENT_TERMS = [
+    "娱乐",
+    "娛樂",
+    "综艺",
+    "綜藝",
+    "搞笑",
+    "reaction",
+    "prank",
+    "celebrity gossip",
+    "切り抜き",
+    "お笑い",
+    "バラエティ",
+]
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -48,10 +61,12 @@ def _is_short(video: dict, max_duration_seconds: int = 60) -> bool:
 def _quality_flags(video: dict, config: dict) -> dict[str, bool]:
     text = f"{video.get('title', '')} {video.get('description', '')}".casefold()
     possible_ad = bool(match_keywords(text, LOW_QUALITY_TERMS))
+    possible_entertainment = bool(match_keywords(text, ENTERTAINMENT_TERMS))
     return {
         "is_short": _is_short(video, int(config.get("shorts_max_duration_seconds") or 60)),
         "possible_ad": possible_ad,
-        "low_signal": possible_ad,
+        "possible_entertainment": possible_entertainment,
+        "low_signal": possible_ad or possible_entertainment,
     }
 
 
@@ -81,6 +96,8 @@ def _hard_reject_reason(video: dict, config: dict, flags: dict[str, bool]) -> st
         return "include_shorts=false，剔除 Shorts。"
     if config.get("reject_possible_ads", False) and flags["possible_ad"]:
         return "疑似广告或推广内容。"
+    if config.get("reject_entertainment", False) and flags["possible_entertainment"]:
+        return "疑似娱乐或低信息密度内容。"
     exclude_keywords = config.get("exclude_keywords") or []
     exclude_text = " ".join(
         [

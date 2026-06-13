@@ -1,4 +1,4 @@
 interface:
   display_name: "Hermes YouTube Signal Scout"
   short_description: "Find and rank YouTube video signals for Hermes workflows."
-  default_prompt: "Use $hermes-youtube-signal-scout to find and rank YouTube videos for this topic. Return result.report_markdown verbatim by default, or the complete result.report_json when JSON is requested, with no additional prose."
+  default_prompt: "Use $hermes-youtube-signal-scout to find and rank YouTube videos for this topic. Return result.report_markdown verbatim by default, or the complete result.report_json when JSON is requested, with no additional prose. Only after an explicit weekly run via run_weekly, convert email_handoff.markdown_body to HTML without dropping video fields and send it with the available email tool. Never render or send email for a normal run result."
