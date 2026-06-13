@@ -69,8 +69,13 @@ def connect(path: str | Path):
 
 
 def init_db(path: str | Path) -> None:
-    with connect(path) as conn:
+    Path(path).expanduser().parent.mkdir(parents=True, exist_ok=True)
+    conn = connect(path)
+    try:
         conn.executescript(SCHEMA)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _now() -> str:
@@ -82,9 +87,36 @@ def get_cached_video(conn, video_id: str, ttl_hours: int) -> dict | None:
     if not row:
         return None
     fetched = datetime.fromisoformat(row["last_fetched_at"])
+    if fetched.tzinfo is None:
+        fetched = fetched.replace(tzinfo=timezone.utc)
     if fetched < datetime.now(timezone.utc) - timedelta(hours=ttl_hours):
         return None
-    return dict(row)
+    raw = dict(row)
+    try:
+        raw_json = json.loads(raw.get("raw_json") or "{}")
+        tags = json.loads(raw.get("tags_json") or "[]")
+    except (TypeError, ValueError):
+        return None
+    if isinstance(raw_json, dict) and raw_json.get("video_id"):
+        return raw_json
+    return {
+        "video_id": raw["video_id"],
+        "url": f"https://www.youtube.com/watch?v={raw['video_id']}",
+        "title": raw.get("title") or "",
+        "channel_id": raw.get("channel_id") or "",
+        "channel_title": raw.get("channel_title") or "",
+        "published_at": raw.get("published_at") or "",
+        "description": raw.get("description") or "",
+        "tags": tags,
+        "category_id": raw.get("category_id"),
+        "duration_seconds": int(raw.get("duration_seconds") or 0),
+        "statistics": {
+            "view_count": int(raw.get("view_count") or 0),
+            "like_count": int(raw.get("like_count") or 0),
+            "comment_count": int(raw.get("comment_count") or 0),
+        },
+        "raw_json": raw_json,
+    }
 
 
 def save_video(conn, video: dict) -> None:
@@ -101,7 +133,7 @@ def save_video(conn, video: dict) -> None:
             video.get("published_at"), video.get("description"), json.dumps(video.get("tags") or [], ensure_ascii=False),
             video.get("category_id"), video.get("duration_seconds"), stats.get("view_count", 0),
             stats.get("like_count", 0), stats.get("comment_count", 0),
-            json.dumps(video.get("raw_json") or video, ensure_ascii=False), _now(),
+            json.dumps(video, ensure_ascii=False), _now(),
         ),
     )
     conn.commit()

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from tools.filter_ranker import filter_and_rank
-from tools.md_writer import write_markdown_report
+from tools.md_writer import build_json_report, render_markdown_report, write_markdown_report
 
 
 class MarkdownWriterTests(unittest.TestCase):
@@ -48,7 +48,7 @@ class MarkdownWriterTests(unittest.TestCase):
 
     def test_writes_markdown_and_json_report(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            markdown_path = Path(write_markdown_report(self.output, temp_dir, {"version": "0.1.0"}))
+            markdown_path = Path(write_markdown_report(self.output, temp_dir, {}))
             json_path = markdown_path.with_suffix(".json")
 
             self.assertEqual(markdown_path.name, "AI_泡沫_20260610_123456.md")
@@ -61,9 +61,37 @@ class MarkdownWriterTests(unittest.TestCase):
             self.assertIn("| 2026-06-09 | 02:05 | 12,345 |", markdown)
             self.assertIn("命中排除词：sponsored。", markdown)
             self.assertIn("101 units (search×1, videos×1)", markdown)
+            self.assertIn("hermes-youtube-signal-scout v0.2.2", markdown)
             self.assertEqual(json.loads(json_path.read_text(encoding="utf-8")), self.output)
             self.assertEqual(self.output["output_files"]["markdown"], str(markdown_path))
             self.assertEqual(self.output["output_files"]["json"], str(json_path))
+            self.assertEqual(self.output["report_markdown"], markdown)
+            self.assertEqual(self.output["report_json"]["videos"][0]["title"], "AI | bubble update")
+
+    def test_canonical_renderer_uses_table_format(self):
+        markdown = render_markdown_report(self.output, {"version": "0.2.1"})
+        self.assertIn("| # | 得分 | 标题 | 频道 | 发布日期 | 时长 | 播放量 |", markdown)
+        self.assertNotIn("🏆", markdown)
+        self.assertNotIn("1️⃣", markdown)
+
+    def test_json_report_matches_markdown_columns(self):
+        report = build_json_report(self.output, {})
+        video = report["videos"][0]
+        self.assertEqual(
+            set(video),
+            {
+                "rank",
+                "topic_score",
+                "title",
+                "url",
+                "channel_title",
+                "published_at",
+                "duration_seconds",
+                "view_count",
+            },
+        )
+        self.assertEqual(video["rank"], 1)
+        self.assertEqual(video["view_count"], 12345)
 
     def test_filter_and_rank_does_not_write_without_output_dir(self):
         with tempfile.TemporaryDirectory() as temp_dir:

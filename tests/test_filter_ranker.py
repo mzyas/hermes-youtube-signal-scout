@@ -117,6 +117,78 @@ class FilterRankerTests(unittest.TestCase):
         self.assertEqual(len(result["videos"]), 1)
         self.assertGreaterEqual(result["videos"][0]["topic_score"], 0.55)
 
+    def test_score_components_and_future_date_behavior(self):
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0
+        config["min_views"] = 0
+        videos = [
+            {
+                "video_id": "future",
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": "ch1",
+                "channel_title": "",
+                "published_at": "2999-01-01T00:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {},
+            },
+            {
+                "video_id": "current",
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": "trusted",
+                "channel_title": "",
+                "published_at": "2026-06-08T10:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {},
+            },
+        ]
+        config["trusted_channel_ids"] = ["trusted"]
+        result = filter_and_rank(videos, config)
+        self.assertIn("未来", result["rejected"][0]["reason"])
+        self.assertEqual(result["videos"][0]["score_components"]["channel"], 0.1)
+        self.assertEqual(result["videos"][0]["score_components"]["engagement"], 0.0)
+
+    def test_reject_possible_ads_is_opt_in(self):
+        video = {
+            "video_id": "ad",
+            "title": "日銀 sponsored",
+            "description": "",
+            "tags": [],
+            "channel_id": "ch1",
+            "channel_title": "",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        config = dict(self.config)
+        config["topic_score_threshold"] = 0
+        self.assertEqual(len(filter_and_rank([video], config)["videos"]), 1)
+        config["reject_possible_ads"] = True
+        self.assertIn("广告", filter_and_rank([video], config)["rejected"][0]["reason"])
+
+    def test_target_tags_only_matches_video_tags(self):
+        config = dict(self.config)
+        config["include_keywords"] = []
+        config["target_tags"] = ["日本経済"]
+        config["topic_score_threshold"] = 0
+        config["min_views"] = 0
+        video = {
+            "video_id": "tag-only",
+            "title": "Market update",
+            "description": "",
+            "tags": ["日本経済"],
+            "channel_id": "ch1",
+            "channel_title": "",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(result["videos"][0]["video_id"], "tag-only")
+
 
 if __name__ == "__main__":
     unittest.main()

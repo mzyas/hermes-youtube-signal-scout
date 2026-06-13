@@ -1,73 +1,41 @@
 # YouTube API Strategy
 
-## Core Constraints
+## Modes
 
-Use YouTube Data API v3 for candidate discovery and metadata hydration. Do not treat `search.list` results as final truth.
+- `discovery`: call `search.list(type=video)`, then batch hydrate IDs.
+- `channel_watch`: resolve each channel's uploads playlist, fetch recent items,
+  then hydrate IDs.
+- `hybrid`: combine both sources and deduplicate IDs before hydration.
 
-`search.list` cannot directly search arbitrary video `snippet.tags[]`. It can recall candidates by `q`, `topicId`, `videoCategoryId`, publish time, region, and language. Fetch actual video tags through `videos.list(part=snippet)`.
+`max_results` limits final ranked output. Candidate recall is controlled by
+`max_search_pages`, `candidates_per_page`, and `channel_max_results`.
 
-Always call `search.list` with:
+YouTube accepts one `regionCode` per search request, not a geographic zone.
+The runtime expands `east_asia`, `europe`, and `north_america` into representative
+country codes, searches each scope, then deduplicates video IDs. Language is
+unrestricted unless `relevance_language` is explicitly configured.
 
-```text
-type=video
-```
+## Quota
 
-Without `type=video`, YouTube may return videos, channels, and playlists.
+Current unit estimates:
 
-## Discovery Mode
+- `search.list`: 100 units per page.
+- `videos.list`: 1 unit per batch of up to 50 IDs.
+- `channels.list`: 1 unit per channel resolution.
+- `playlistItems.list`: 1 unit per channel page.
 
-Use this for first-pass topic discovery.
+The result reports calls actually made by the runtime. Cache hits therefore
+reduce `videos.list` calls and the quota estimate.
 
-```text
-user topic / keywords / target tags
-  -> build one or more q queries
-search.list(type=video, q=..., publishedAfter=..., regionCode=..., relevanceLanguage=...)
-  -> collect video IDs
-videos.list(part=snippet,contentDetails,statistics,topicDetails)
-  -> hydrate tags, duration, stats, category, topic metadata
-local filter + rank
-  -> structured JSON results
-```
+## Cache
 
-## Channel Watch Mode
+Hydrated videos are cached in SQLite. The default path is under the operating
+system's user cache directory. A cache failure does not abort the run; the
+runtime adds a warning and continues without cache.
 
-Use this for repeated monitoring of known channels.
+## Reliability
 
-```text
-channels.list(part=contentDetails)
-  -> read contentDetails.relatedPlaylists.uploads
-playlistItems.list(playlistId=uploads)
-  -> collect latest uploaded video IDs
-videos.list(part=snippet,contentDetails,statistics,topicDetails)
-  -> hydrate metadata
-local filter + rank
-  -> structured JSON results
-```
-
-## Query Guidance
-
-`q` supports simple Boolean-style construction:
-
-```text
-keywordA|keywordB
-keywordA -excludedTerm
-keywordA|keywordB -excludedTerm
-```
-
-Encode `|` as `%7C` in request URLs. Treat `q` as recall, not classification; local filtering decides final relevance.
-
-Use `topicId` only for broad curated YouTube categories such as music, gaming, sports, entertainment, lifestyle, society, business, politics, and technology. For topics such as Japanese central-bank policy, AWS operations jobs, AI browser automation, or Chrome Web Store compliance, prefer `q + target_tags + include_keywords + local classifier`.
-
-## Quota Guidance
-
-Estimate quota before running. `search.list` is expensive compared with `videos.list`; reuse search results when possible. Batch video hydration up to API limits rather than calling `videos.list` once per video. For recurring monitoring, prefer channel upload polling plus cache checks over repeated broad searches.
-
-Recommended result metadata should include:
-
-```json
-"quota_usage_estimate": {
-  "search_list_calls": 1,
-  "videos_list_calls": 1,
-  "playlist_items_list_calls": 0
-}
-```
+The client retries network failures, HTTP 5xx, and rate limits with exponential
+backoff. Authentication failures and quota exhaustion are classified separately
+and are not retried as generic transient failures. Malformed JSON responses are
+reported as response errors.

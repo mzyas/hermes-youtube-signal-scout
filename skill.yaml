@@ -1,17 +1,22 @@
 name: hermes-youtube-signal-scout
-version: 0.1.1
+version: 0.2.2
 description: >
   Discover, hydrate, filter, and rank YouTube videos for a topic, keyword group,
   tag set, channel pool, and time window using YouTube Data API v3.
 runtime:
   language: python
-  entrypoint: tools/search_discovery.py
+  entrypoint: tools/runner.py
 secrets:
   - YOUTUBE_API_KEY
 defaults:
   mode: discovery
-  region_code: JP
-  relevance_language: ja
+  zones:
+    - east_asia
+    - europe
+    - north_america
+  region_code: null
+  region_codes: []
+  relevance_language: null
   order: date
   max_results: 25
   max_search_pages: 1
@@ -20,6 +25,13 @@ defaults:
   include_shorts: false
   topic_score_threshold: 0.55
   output_dir: null
+  cache_enabled: true
+  cache_path: null
+  retry_attempts: 2
+  retry_backoff_seconds: 1.0
+  timeout_seconds: 30
+  shorts_max_duration_seconds: 60
+  reject_possible_ads: false
 quota_policy:
   max_search_pages_per_run: 1
   max_videos_per_hydration_batch: 50

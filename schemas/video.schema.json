@@ -2,23 +2,51 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Hermes YouTube Signal Scout Video",
   "type": "object",
-  "required": ["video_id", "url", "title", "channel_id", "channel_title", "published_at", "duration_seconds", "matched_fields", "topic_score", "quality_flags", "reason"],
+  "required": ["video_id", "url", "title", "channel_id", "channel_title", "published_at", "duration_seconds", "matched_fields", "topic_score", "score_components", "quality_flags", "reason"],
   "additionalProperties": true,
   "properties": {
-    "video_id": {"type": "string"},
-    "url": {"type": "string"},
+    "video_id": {"type": "string", "minLength": 1},
+    "url": {"type": "string", "format": "uri"},
     "title": {"type": "string"},
     "channel_id": {"type": "string"},
     "channel_title": {"type": "string"},
-    "published_at": {"type": "string"},
+    "published_at": {"type": "string", "format": "date-time"},
     "description_excerpt": {"type": "string"},
     "tags": {"type": "array", "items": {"type": "string"}},
     "category_id": {"type": ["string", "null"]},
     "duration_seconds": {"type": "integer", "minimum": 0},
-    "statistics": {"type": "object"},
-    "matched_fields": {"type": "object"},
+    "statistics": {
+      "type": "object",
+      "properties": {
+        "view_count": {"type": "integer", "minimum": 0},
+        "like_count": {"type": "integer", "minimum": 0},
+        "comment_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "matched_fields": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
     "topic_score": {"type": "number", "minimum": 0, "maximum": 1},
-    "quality_flags": {"type": "object"},
+    "score_components": {
+      "type": "object",
+      "required": ["title", "tags", "description", "channel", "freshness", "engagement"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {"type": "number", "minimum": 0, "maximum": 0.3},
+        "tags": {"type": "number", "minimum": 0, "maximum": 0.25},
+        "description": {"type": "number", "minimum": 0, "maximum": 0.2},
+        "channel": {"type": "number", "minimum": 0, "maximum": 0.1},
+        "freshness": {"type": "number", "minimum": 0, "maximum": 0.1},
+        "engagement": {"type": "number", "minimum": 0, "maximum": 0.05}
+      }
+    },
+    "quality_flags": {
+      "type": "object",
+      "required": ["is_short", "possible_ad", "low_signal"],
+      "properties": {
+        "is_short": {"type": "boolean"},
+        "possible_ad": {"type": "boolean"},
+        "low_signal": {"type": "boolean"}
+      }
+    },
     "reason": {"type": "string"}
   }
 }

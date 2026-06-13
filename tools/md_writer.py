@@ -55,7 +55,56 @@ def _quota_summary(output: dict) -> tuple[int, int, int]:
     return cost, search_calls, video_calls
 
 
-def _render_markdown(output: dict, config: dict) -> str:
+def build_json_report(output: dict, config: dict) -> dict:
+    """Build canonical JSON with the same information as the Markdown report."""
+    query_plan = output.get("query_plan") or {}
+    cost, search_calls, video_calls = _quota_summary(output)
+    videos = output.get("videos") or []
+    rejected = output.get("rejected") or []
+    return {
+        "topic": output.get("topic") or config.get("topic") or "YouTube",
+        "generated_at": output.get("created_at", ""),
+        "search_queries": query_plan.get("search_queries") or [],
+        "time_range": {
+            "published_after": query_plan.get("published_after") or config.get("published_after"),
+            "published_before": query_plan.get("published_before") or config.get("published_before"),
+        },
+        "quota": {
+            "estimated_cost": cost,
+            "search_calls": search_calls,
+            "video_calls": video_calls,
+        },
+        "accepted_count": len(videos),
+        "rejected_count": len(rejected),
+        "videos": [
+            {
+                "rank": index,
+                "topic_score": float(video.get("topic_score") or 0),
+                "title": video.get("title", ""),
+                "url": video.get("url", ""),
+                "channel_title": video.get("channel_title", ""),
+                "published_at": video.get("published_at", ""),
+                "duration_seconds": int(video.get("duration_seconds") or 0),
+                "view_count": _views(video),
+            }
+            for index, video in enumerate(videos, start=1)
+        ],
+        "rejected": [
+            {
+                "rank": index,
+                "video_id": video.get("video_id"),
+                "title": video.get("title", ""),
+                "reason": video.get("reason", ""),
+            }
+            for index, video in enumerate(rejected, start=1)
+        ],
+        "run_stats": output.get("run_stats") or {},
+        "warnings": output.get("warnings") or [],
+    }
+
+
+def render_markdown_report(output: dict, config: dict) -> str:
+    """Render the canonical user-facing Markdown report."""
     videos = output.get("videos") or []
     rejected = output.get("rejected") or []
     query_plan = output.get("query_plan") or {}
@@ -64,7 +113,7 @@ def _render_markdown(output: dict, config: dict) -> str:
     cost, search_calls, video_calls = _quota_summary(output)
 
     lines = [
-        f"# {output.get('topic') or config.get('topic') or 'YouTube'} · 最近7天 YouTube 信号",
+        f"# {output.get('topic') or config.get('topic') or 'YouTube'} · YouTube 信号报告",
         "",
         f"**生成时间:** {output.get('created_at', '')}",
         f"**搜索 query:** `{_query(output)}`",
@@ -105,7 +154,11 @@ def _render_markdown(output: dict, config: dict) -> str:
             f"| {index} | {_table_text(video.get('title'))} | {_table_text(video.get('reason'))} |"
         )
 
-    version = config.get("version") or output.get("version") or "0.1.0"
+    version = config.get("version") or output.get("version")
+    if not version:
+        from .config import skill_version
+
+        version = skill_version()
     lines.extend(["", "---", "", f"*由 hermes-youtube-signal-scout v{version} 生成*", ""])
     return "\n".join(lines)
 
@@ -121,8 +174,10 @@ def write_markdown_report(output: dict, output_dir: str, config: dict) -> str:
         "markdown": str(markdown_path),
         "json": str(json_path),
     }
+    output["report_json"] = build_json_report(output, config)
+    output["report_markdown"] = render_markdown_report(output, config)
 
-    markdown_path.write_text(_render_markdown(output, config), encoding="utf-8", newline="\n")
+    markdown_path.write_text(output["report_markdown"], encoding="utf-8", newline="\n")
     json_path.write_text(
         json.dumps(output, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

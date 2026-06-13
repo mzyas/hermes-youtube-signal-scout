@@ -2,18 +2,94 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Hermes YouTube Signal Scout Result",
   "type": "object",
-  "required": ["run_id", "skill", "topic", "mode", "created_at", "query_plan", "quota_usage_estimate", "videos", "rejected"],
+  "required": ["run_id", "skill", "version", "topic", "mode", "created_at", "query_plan", "quota_usage_estimate", "videos", "rejected", "run_stats", "warnings", "report_markdown", "report_json"],
   "additionalProperties": true,
   "properties": {
     "run_id": {"type": "string"},
     "skill": {"const": "hermes-youtube-signal-scout"},
+    "version": {"type": "string"},
     "topic": {"type": "string"},
-    "mode": {"type": "string"},
-    "created_at": {"type": "string"},
-    "query_plan": {"type": "object"},
-    "quota_usage_estimate": {"type": "object"},
+    "mode": {"type": "string", "enum": ["discovery", "channel_watch", "hybrid"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "query_plan": {
+      "type": "object",
+      "required": ["search_queries", "channels"],
+      "properties": {
+        "search_queries": {"type": "array", "items": {"type": "string"}},
+        "channels": {"type": "array", "items": {"type": "object"}},
+        "published_after": {"type": ["string", "null"]},
+        "published_before": {"type": ["string", "null"]},
+        "region_code": {"type": ["string", "null"]},
+        "region_codes": {"type": "array", "items": {"type": "string"}},
+        "zones": {"type": "array", "items": {"type": "string"}},
+        "relevance_language": {"type": ["string", "null"]},
+        "order": {"type": "string"},
+        "search_page_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "quota_usage_estimate": {
+      "type": "object",
+      "required": ["search_list_calls", "videos_list_calls", "channels_list_calls", "playlist_items_list_calls", "estimated_quota_cost"],
+      "additionalProperties": false,
+      "properties": {
+        "search_list_calls": {"type": "integer", "minimum": 0},
+        "videos_list_calls": {"type": "integer", "minimum": 0},
+        "channels_list_calls": {"type": "integer", "minimum": 0},
+        "playlist_items_list_calls": {"type": "integer", "minimum": 0},
+        "estimated_quota_cost": {"type": "integer", "minimum": 0}
+      }
+    },
     "videos": {"type": "array", "items": {"$ref": "video.schema.json"}},
-    "rejected": {"type": "array", "items": {"type": "object"}},
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["video_id", "title", "reason"],
+        "properties": {
+          "video_id": {"type": ["string", "null"]},
+          "title": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "run_stats": {
+      "type": "object",
+      "required": ["candidate_count", "deduplicated_count", "cache_hits", "hydrated_count", "accepted_count", "rejected_count", "api_calls"],
+      "properties": {
+        "candidate_count": {"type": "integer", "minimum": 0},
+        "deduplicated_count": {"type": "integer", "minimum": 0},
+        "cache_hits": {"type": "integer", "minimum": 0},
+        "hydrated_count": {"type": "integer", "minimum": 0},
+        "accepted_count": {"type": "integer", "minimum": 0},
+        "rejected_count": {"type": "integer", "minimum": 0},
+        "api_calls": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "report_markdown": {"type": "string"},
+    "report_json": {
+      "type": "object",
+      "required": ["topic", "generated_at", "search_queries", "time_range", "quota", "accepted_count", "rejected_count", "videos", "rejected", "run_stats", "warnings"],
+      "properties": {
+        "topic": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "search_queries": {"type": "array", "items": {"type": "string"}},
+        "time_range": {"type": "object"},
+        "quota": {"type": "object"},
+        "accepted_count": {"type": "integer", "minimum": 0},
+        "rejected_count": {"type": "integer", "minimum": 0},
+        "videos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rank", "topic_score", "title", "url", "channel_title", "published_at", "duration_seconds", "view_count"]
+          }
+        },
+        "rejected": {"type": "array", "items": {"type": "object"}},
+        "run_stats": {"type": "object"},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    },
     "output_files": {
       "type": "object",
       "required": ["markdown", "json"],
