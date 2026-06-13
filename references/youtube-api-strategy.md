@@ -20,7 +20,12 @@ automatically. `adaptive_max_search_pages` controls the extra page rounds.
 YouTube accepts one `regionCode` per search request, not a geographic zone.
 The runtime expands `east_asia`, `europe`, and `north_america` into representative
 country codes, searches each scope, then deduplicates video IDs. Language is
-unrestricted unless `relevance_language` is explicitly configured.
+localized per search request: English for `US`/`GB`/`CA`, Japanese for `JP`,
+Traditional Chinese for `HK`/`TW`, Korean for `KR`, German for `DE`, and French
+for `FR`. The agent supplies faithful topic translations through
+`localized_queries`; missing translations fall back to the original terms.
+`relevanceLanguage` improves regional recall but does not hard-filter the
+languages of returned videos.
 
 ## Quota
 

@@ -16,6 +16,18 @@
       "required": ["search_queries", "channels"],
       "properties": {
         "search_queries": {"type": "array", "items": {"type": "string"}},
+        "region_queries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["region_code", "language", "query"],
+            "properties": {
+              "region_code": {"type": ["string", "null"]},
+              "language": {"type": ["string", "null"]},
+              "query": {"type": "string"}
+            }
+          }
+        },
         "channels": {"type": "array", "items": {"type": "object"}},
         "published_after": {"type": ["string", "null"]},
         "published_before": {"type": ["string", "null"]},

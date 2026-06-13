@@ -156,6 +156,10 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertEqual(result["query_plan"]["region_tiers_searched"], 2)
         self.assertEqual(result["query_plan"]["region_codes"], searched_regions)
+        self.assertEqual(
+            [item["language"] for item in result["query_plan"]["region_queries"]],
+            ["en", "ja", "zh-Hant", "en", "ko", "zh-Hant", "de", "fr", "en"],
+        )
         self.assertTrue(result["run_stats"]["target_met"])
 
     def test_discovery_pages_and_hydration_batches_use_actual_counts(self):

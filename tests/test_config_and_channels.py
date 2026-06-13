@@ -25,6 +25,28 @@ class ConfigAndChannelTests(unittest.TestCase):
         self.assertTrue(config["reject_possible_ads"])
         self.assertTrue(config["reject_entertainment"])
 
+    def test_localized_queries_are_added_to_scoring_keywords(self):
+        config = apply_defaults({
+            "topic": "时政",
+            "include_keywords": ["时政"],
+            "localized_queries": {
+                "en": ["current affairs"],
+                "ja": ["時事問題"],
+            },
+            "cache_enabled": False,
+        })
+        self.assertEqual(
+            config["include_keywords"],
+            ["时政", "current affairs", "時事問題"],
+        )
+
+    def test_rejects_invalid_localized_query_shape(self):
+        with self.assertRaisesRegex(ConfigurationError, "non-empty string array"):
+            apply_defaults({
+                "topic": "时政",
+                "localized_queries": {"ja": "時事問題"},
+            })
+
     def test_default_search_uses_rolling_seven_day_window(self):
         before = datetime.now(timezone.utc) - timedelta(days=7, seconds=2)
         config = apply_defaults({"topic": "signal", "cache_enabled": False})

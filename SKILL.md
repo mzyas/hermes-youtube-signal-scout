@@ -11,7 +11,9 @@ and rank them before returning results.
 
 ## Run
 
-1. Build a YAML or JSON config from the user request.
+1. Build a YAML or JSON config from the user request. Populate
+   `localized_queries` with faithful translations for the target regions while
+   preserving the user's original meaning.
 2. Select `discovery`, `channel_watch`, or `hybrid`.
 3. Estimate the likely quota cost and keep broad search pages low.
 4. Run:
@@ -67,13 +69,15 @@ Before running, ask only when clarification materially improves precision:
 
 Ask both questions together when both are needed. Do not ask about regions,
 language, channels, Shorts, advertisements, or entertainment preferences.
+Reuse the user's exact topic wording in every clarification. Never replace it
+with a broader, narrower, or adjacent label.
 
 Apply these defaults without asking:
 
 - latest 7 days;
 - region tier 1: `US`, `JP`, `HK`, `GB`;
 - region tier 2 if needed: `KR`, `TW`, `DE`, `FR`, `CA`;
-- unrestricted language;
+- localized search queries for each region, without hard-filtering result language;
 - exclude Shorts, advertisements, promotions, and entertainment content.
 
 Only override regions when the user explicitly requests another geography. If

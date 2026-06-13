@@ -75,6 +75,18 @@ def _manual_validate(config: dict) -> None:
         config.get("search_query") or config.get("include_keywords") or topic.strip()
     ):
         raise ConfigurationError(f"{config['mode']} mode requires a topic or search terms")
+    localized_queries = config.get("localized_queries") or {}
+    if not isinstance(localized_queries, dict):
+        raise ConfigurationError("localized_queries must be an object/mapping")
+    for language, terms in localized_queries.items():
+        if language not in {"en", "ja", "zh-Hant", "ko", "de", "fr"}:
+            raise ConfigurationError(f"unsupported localized query language: {language}")
+        if not isinstance(terms, list) or not terms or any(
+            not isinstance(term, str) or not term.strip() for term in terms
+        ):
+            raise ConfigurationError(
+                f"localized_queries.{language} must be a non-empty string array"
+            )
 
 
 def validate_config(config: dict) -> None:
@@ -112,6 +124,17 @@ def apply_defaults(config: dict) -> dict:
         ).isoformat().replace("+00:00", "Z")
     if not merged.get("include_keywords") and not merged.get("target_tags"):
         merged["include_keywords"] = [str(merged.get("topic") or "").strip()]
+    localized = merged.get("localized_queries") or {}
+    localized_terms = [
+        term
+        for terms in localized.values()
+        if isinstance(terms, list)
+        for term in terms
+    ] if isinstance(localized, dict) else []
+    merged["include_keywords"] = list(dict.fromkeys([
+        *(merged.get("include_keywords") or []),
+        *localized_terms,
+    ]))
     merged["version"] = str(manifest.get("version") or "0.0.0")
     validate_config(merged)
     return merged

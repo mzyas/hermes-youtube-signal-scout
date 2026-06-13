@@ -13,6 +13,17 @@ DEFAULT_REGION_TIERS = [
     ["US", "JP", "HK", "GB"],
     ["KR", "TW", "DE", "FR", "CA"],
 ]
+REGION_SEARCH_LANGUAGES = {
+    "US": "en",
+    "JP": "ja",
+    "HK": "zh-Hant",
+    "GB": "en",
+    "KR": "ko",
+    "TW": "zh-Hant",
+    "DE": "de",
+    "FR": "fr",
+    "CA": "en",
+}
 
 
 def _dedupe_terms(terms: list[str]) -> list[str]:
@@ -76,6 +87,21 @@ def resolve_region_tiers(config: dict) -> list[list[str | None]]:
     return [list(tier) for tier in DEFAULT_REGION_TIERS]
 
 
+def query_for_region(config: dict, region_code: str | None) -> tuple[str, str | None]:
+    """Return the localized query and search-language hint for one region."""
+    language = REGION_SEARCH_LANGUAGES.get(str(region_code)) if region_code else None
+    localized_queries = config.get("localized_queries") or {}
+    terms = localized_queries.get(language) if language and isinstance(localized_queries, dict) else None
+    if not isinstance(terms, list):
+        terms = None
+    query = config.get("search_query") or build_query(
+        terms or config.get("include_keywords") or [config.get("topic", "")],
+        max_terms=int(config.get("max_query_terms") or DEFAULT_MAX_QUERY_TERMS),
+        max_chars=int(config.get("max_query_chars") or DEFAULT_MAX_QUERY_CHARS),
+    )
+    return query, config.get("relevance_language") or language
+
+
 def search_videos(
     client,
     config: dict,
@@ -89,24 +115,17 @@ def search_videos(
         else int(config.get("max_search_pages") or 1)
     )
     candidates_per_page = min(50, int(config.get("candidates_per_page") or 50))
-    query = config.get("search_query") or build_query(
-        config.get("include_keywords") or [config.get("topic", "")],
-        max_terms=int(config.get("max_query_terms") or DEFAULT_MAX_QUERY_TERMS),
-        max_chars=int(config.get("max_query_chars") or DEFAULT_MAX_QUERY_CHARS),
-    )
     base_params = {
         "part": "snippet",
         "type": "video",
-        "q": query,
         "order": config.get("order", "date"),
         "maxResults": candidates_per_page,
         "safeSearch": config.get("safe_search", "moderate"),
     }
-    for key in ["publishedAfter", "publishedBefore", "relevanceLanguage"]:
+    for key in ["publishedAfter", "publishedBefore"]:
         snake = {
             "publishedAfter": "published_after",
             "publishedBefore": "published_before",
-            "relevanceLanguage": "relevance_language",
         }[key]
         if config.get(snake):
             base_params[key] = config[snake]
@@ -114,7 +133,14 @@ def search_videos(
     pages = 0
     region_codes = region_codes_override or resolve_region_codes(config)
     next_page_tokens: dict[str, str] = {}
+    region_queries: list[dict] = []
     for region_code in region_codes:
+        query, relevance_language = query_for_region(config, region_code)
+        region_queries.append({
+            "region_code": region_code,
+            "language": relevance_language,
+            "query": query,
+        })
         token_key = region_code or "__global__"
         page_token = (page_tokens or {}).get(token_key)
         if page_tokens is not None and not page_token:
@@ -122,8 +148,11 @@ def search_videos(
         region_pages = 0
         while region_pages < max_pages:
             request_params = dict(base_params)
+            request_params["q"] = query
             if region_code:
                 request_params["regionCode"] = region_code
+            if relevance_language:
+                request_params["relevanceLanguage"] = relevance_language
             if page_token:
                 request_params["pageToken"] = page_token
             payload = client.get("search", request_params)
@@ -141,7 +170,10 @@ def search_videos(
     return {
         "video_ids": video_ids,
         "query_plan": {
-            "search_queries": [query],
+            "search_queries": _dedupe_terms(
+                [item["query"] for item in region_queries]
+            ),
+            "region_queries": region_queries,
             "region_codes": [code for code in region_codes if code],
             "zones": config.get("zones") or [],
             **base_params,
