@@ -21,6 +21,13 @@ region_priority_tiers:
   - [US, JP, HK, GB]
   - [KR, TW, DE, FR, CA]
 relevance_language: null
+localized_queries:
+  en: ["current affairs", "politics"]
+  ja: ["時事問題", "政治"]
+  zh-Hant: ["時政"]
+  ko: ["시사", "정치"]
+  de: ["Zeitgeschehen", "Politik"]
+  fr: ["actualité politique", "politique"]
 max_results: 10
 target_results: 10
 max_search_pages: 1
@@ -41,8 +48,17 @@ set `lookback_days: null` to disable the default time window.
 
 The default zone preset searches representative markets in East Asia
 (`JP`, `KR`, `TW`, `HK`), Europe (`GB`, `DE`, `FR`), and North America
-(`US`, `CA`). No `relevanceLanguage` is sent by default. Set legacy
-`region_code`, or explicit `region_codes`, to override the zone preset.
+(`US`, `CA`). Each request uses that region's search language: English for
+`US`/`GB`/`CA`, Japanese for `JP`, Traditional Chinese for `HK`/`TW`, Korean
+for `KR`, German for `DE`, and French for `FR`. This is a recall hint, not a
+hard result-language filter.
+
+The agent should populate `localized_queries` with faithful translations of
+the user's original topic. Translations must not broaden, narrow, or relabel
+the intent. Missing languages fall back to the original `include_keywords`.
+Set legacy `region_code`, or explicit `region_codes`, to override the zone
+preset. An explicit `search_query` or `relevance_language` overrides regional
+localization.
 
 Default search priority:
 

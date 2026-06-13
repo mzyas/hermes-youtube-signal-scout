@@ -27,6 +27,10 @@ class SchemaTests(unittest.TestCase):
             "topic": "signal",
             "mode": "discovery",
             "published_after": "2026-06-01T00:00:00Z",
+            "localized_queries": {
+                "en": ["current affairs"],
+                "ja": ["時事問題"],
+            },
         })
 
         result_schema = json.loads((SCHEMAS / "result.schema.json").read_text(encoding="utf-8"))
@@ -43,7 +47,7 @@ class SchemaTests(unittest.TestCase):
         ).validate({
             "run_id": "run",
             "skill": "hermes-youtube-signal-scout",
-            "version": "0.2.9",
+            "version": "0.3.0",
             "topic": "signal",
             "mode": "discovery",
             "created_at": "2026-06-10T00:00:00Z",

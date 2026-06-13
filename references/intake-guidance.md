@@ -24,6 +24,18 @@ is true:
 Ask both questions in one turn. If only one item is ambiguous, ask only that
 item.
 
+## Preserve the User's Wording
+
+Quote or reuse the user's topic words in the clarification question. Do not
+replace them with a broader, narrower, or adjacent category.
+
+- User says `时政`: ask `你更关注“时政”中的哪个方向？`
+- Do not silently rewrite it as `国际政治`, `地缘政治`, or `国际新闻`.
+- User says `AI 泡沫`: keep `AI 泡沫`; do not change it to `科技股估值`.
+
+Examples may follow the user's wording, but they must not redefine it. Treat
+the answer as a refinement of the original topic, not a replacement.
+
 ## Do Not Ask
 
 Do not ask users to choose regions, languages, channels, Shorts, advertising,
@@ -33,6 +45,7 @@ Defaults:
 
 - priority regions: `US`, `JP`, `HK`, `GB`;
 - fallback regions: `KR`, `TW`, `DE`, `FR`, `CA`;
-- no language restriction;
+- use each search region's local language for query recall;
+- do not hard-filter result videos by language;
 - Shorts excluded;
 - advertisements, promotions, and entertainment content excluded.

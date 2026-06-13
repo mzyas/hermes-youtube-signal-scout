@@ -2,6 +2,7 @@ import unittest
 
 from tools.search_discovery import (
     build_query,
+    query_for_region,
     resolve_region_codes,
     resolve_region_tiers,
     search_videos,
@@ -54,7 +55,7 @@ class QueryBuildingTests(unittest.TestCase):
         self.assertNotIn("-广告", params["q"])
         self.assertLessEqual(len(params["q"]), 80)
 
-    def test_default_zones_expand_without_language_filter(self):
+    def test_default_zones_use_each_regions_search_language(self):
         client = FakeClient()
         result = search_videos(
             client,
@@ -69,8 +70,42 @@ class QueryBuildingTests(unittest.TestCase):
             ["JP", "KR", "TW", "HK", "GB", "DE", "FR", "US", "CA"],
         )
         self.assertEqual(len(client.calls), 9)
-        self.assertNotIn("relevanceLanguage", client.calls[0][1])
+        self.assertEqual(client.calls[0][1]["relevanceLanguage"], "ja")
         self.assertEqual(result["page_count"], 9)
+
+    def test_localized_query_matches_region_language(self):
+        config = {
+            "topic": "时政",
+            "include_keywords": ["时政"],
+            "localized_queries": {
+                "en": ["current affairs", "politics"],
+                "ja": ["時事問題", "政治"],
+                "zh-Hant": ["時政"],
+            },
+        }
+        self.assertEqual(
+            query_for_region(config, "US"),
+            ("current affairs|politics", "en"),
+        )
+        self.assertEqual(
+            query_for_region(config, "JP"),
+            ("時事問題|政治", "ja"),
+        )
+        self.assertEqual(query_for_region(config, "HK"), ("時政", "zh-Hant"))
+
+    def test_explicit_search_query_and_language_override_localization(self):
+        self.assertEqual(
+            query_for_region(
+                {
+                    "topic": "时政",
+                    "search_query": "exact phrase",
+                    "relevance_language": "es",
+                    "localized_queries": {"ja": ["時事問題"]},
+                },
+                "JP",
+            ),
+            ("exact phrase", "es"),
+        )
 
     def test_default_region_priority_tiers(self):
         self.assertEqual(

@@ -140,6 +140,8 @@ def run(config: dict, client=None) -> dict:
     region_tiers = resolve_region_tiers(config)
     searched_tiers = 0
     searched_region_codes: list[str] = []
+    search_queries: list[str] = []
+    region_queries: list[dict] = []
     if mode in {"discovery", "hybrid"}:
         discovery = search_videos(
             counted,
@@ -150,6 +152,8 @@ def run(config: dict, client=None) -> dict:
         candidate_ids.extend(discovery["video_ids"])
         query_plan.update(discovery["query_plan"])
         searched_region_codes.extend(discovery["query_plan"].get("region_codes", []))
+        search_queries.extend(discovery["query_plan"].get("search_queries", []))
+        region_queries.extend(discovery["query_plan"].get("region_queries", []))
         query_plan["search_page_count"] = discovery["page_count"]
     if mode in {"channel_watch", "hybrid"}:
         channel_ids, channels = _discover_channels(counted, config)
@@ -181,6 +185,8 @@ def run(config: dict, client=None) -> dict:
         searched_tiers += 1
         total_search_pages += extra["page_count"]
         searched_region_codes.extend(extra["query_plan"].get("region_codes", []))
+        search_queries.extend(extra["query_plan"].get("search_queries", []))
+        region_queries.extend(extra["query_plan"].get("region_queries", []))
         next_page_tokens.update(extra["next_page_tokens"])
         raw_candidate_count += len(extra["video_ids"])
         extra_ids = [
@@ -214,6 +220,8 @@ def run(config: dict, client=None) -> dict:
         adaptive_pages_used += 1
         total_search_pages += extra["page_count"]
         next_page_tokens = extra["next_page_tokens"]
+        search_queries.extend(extra["query_plan"].get("search_queries", []))
+        region_queries.extend(extra["query_plan"].get("region_queries", []))
         extra_ids = [
             video_id for video_id in extra["video_ids"] if video_id not in candidate_ids
         ]
@@ -230,6 +238,15 @@ def run(config: dict, client=None) -> dict:
         runtime_config["quota_usage_estimate"] = summarize_calls(counted.calls)
         result = filter_and_rank(videos, runtime_config)
     result["query_plan"] = query_plan
+    result["query_plan"]["search_queries"] = _dedupe(search_queries)
+    result["query_plan"]["region_queries"] = list({
+        (
+            item.get("region_code"),
+            item.get("language"),
+            item.get("query"),
+        ): item
+        for item in region_queries
+    }.values())
     result["query_plan"]["region_codes"] = _dedupe(searched_region_codes)
     result["query_plan"]["region_priority_tiers"] = region_tiers
     result["query_plan"]["region_tiers_searched"] = searched_tiers
