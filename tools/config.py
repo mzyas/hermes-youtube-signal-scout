@@ -6,7 +6,7 @@ import json
 import os
 import re
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
@@ -104,6 +104,11 @@ def apply_defaults(config: dict) -> dict:
     merged.setdefault("shorts_max_duration_seconds", 60)
     merged.setdefault("reject_possible_ads", False)
     merged.setdefault("trusted_channel_ids", [])
+    lookback_days = merged.get("lookback_days")
+    if not merged.get("published_after") and lookback_days:
+        merged["published_after"] = (
+            datetime.now(timezone.utc) - timedelta(days=int(lookback_days))
+        ).isoformat().replace("+00:00", "Z")
     if not merged.get("include_keywords") and not merged.get("target_tags"):
         merged["include_keywords"] = [str(merged.get("topic") or "").strip()]
     merged["version"] = str(manifest.get("version") or "0.0.0")

@@ -33,5 +33,18 @@ Channel points require a channel-title keyword match or a channel ID listed in
 `trusted_channel_ids`; there is no unconditional baseline. Missing statistics
 produce zero engagement rather than an error.
 
+For a publication window of seven days or less, every video that passes the
+time-window hard filter receives the full raw freshness score of `1.0`.
+
+For a longer window, including a 30-day search:
+
+- videos from the most recent seven days receive `1.0`;
+- older videos decay linearly;
+- a video at the start of the requested window retains `0.50`.
+
+The default configuration creates a rolling seven-day `published_after`. If
+that default is disabled entirely, freshness falls back to linear position
+within a rolling 30-day window.
+
 `topic_score` is the sum of components, clamped to `[0, 1]`. Accepted videos are
 sorted by score and then limited by `max_results`.

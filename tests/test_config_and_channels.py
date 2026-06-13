@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from tools.channel_resolver import parse_channel_reference
@@ -21,6 +22,22 @@ class ConfigAndChannelTests(unittest.TestCase):
     def test_topic_becomes_match_term_when_keywords_are_empty(self):
         config = apply_defaults({"topic": "fallback topic", "cache_enabled": False})
         self.assertEqual(config["include_keywords"], ["fallback topic"])
+
+    def test_default_search_uses_rolling_seven_day_window(self):
+        before = datetime.now(timezone.utc) - timedelta(days=7, seconds=2)
+        config = apply_defaults({"topic": "signal", "cache_enabled": False})
+        after = datetime.fromisoformat(config["published_after"].replace("Z", "+00:00"))
+        upper = datetime.now(timezone.utc) - timedelta(days=7) + timedelta(seconds=2)
+        self.assertGreaterEqual(after, before)
+        self.assertLessEqual(after, upper)
+
+    def test_explicit_time_window_overrides_default_lookback(self):
+        config = apply_defaults({
+            "topic": "signal",
+            "published_after": "2026-01-01T00:00:00Z",
+            "cache_enabled": False,
+        })
+        self.assertEqual(config["published_after"], "2026-01-01T00:00:00Z")
 
     def test_rejects_timestamp_without_timezone(self):
         with self.assertRaisesRegex(ConfigurationError, "timezone"):

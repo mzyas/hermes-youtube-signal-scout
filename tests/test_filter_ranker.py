@@ -1,6 +1,7 @@
 import unittest
+from datetime import datetime, timezone
 
-from tools.filter_ranker import filter_and_rank
+from tools.filter_ranker import _freshness_score, filter_and_rank
 
 
 class FilterRankerTests(unittest.TestCase):
@@ -188,6 +189,44 @@ class FilterRankerTests(unittest.TestCase):
         }
         result = filter_and_rank([video], config)
         self.assertEqual(result["videos"][0]["video_id"], "tag-only")
+
+    def test_explicit_time_window_gives_full_freshness(self):
+        now = datetime(2026, 6, 14, tzinfo=timezone.utc)
+        config = {
+            "published_after": "2026-06-07T00:00:00Z",
+            "published_before": "2026-06-14T00:00:00Z",
+        }
+        oldest = {"published_at": "2026-06-07T00:00:00Z"}
+        middle = {"published_at": "2026-06-10T12:00:00Z"}
+        newest = {"published_at": "2026-06-14T00:00:00Z"}
+        self.assertAlmostEqual(_freshness_score(oldest, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(middle, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(newest, config, now), 1.0)
+
+    def test_thirty_day_window_decays_after_first_seven_days(self):
+        now = datetime(2026, 6, 14, tzinfo=timezone.utc)
+        config = {
+            "published_after": "2026-05-15T00:00:00Z",
+            "published_before": "2026-06-14T00:00:00Z",
+        }
+        newest = {"published_at": "2026-06-14T00:00:00Z"}
+        seven_days_old = {"published_at": "2026-06-07T00:00:00Z"}
+        middle_of_decay = {"published_at": "2026-05-26T12:00:00Z"}
+        oldest = {"published_at": "2026-05-15T00:00:00Z"}
+        self.assertAlmostEqual(_freshness_score(newest, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(seven_days_old, config, now), 1.0)
+        self.assertAlmostEqual(_freshness_score(middle_of_decay, config, now), 0.75)
+        self.assertAlmostEqual(_freshness_score(oldest, config, now), 0.50)
+
+    def test_freshness_uses_rolling_30_days_without_start_date(self):
+        now = datetime(2026, 6, 14, tzinfo=timezone.utc)
+        config = {"published_before": "2026-06-14T00:00:00Z"}
+        oldest = {"published_at": "2026-05-15T00:00:00Z"}
+        middle = {"published_at": "2026-05-30T00:00:00Z"}
+        newest = {"published_at": "2026-06-14T00:00:00Z"}
+        self.assertAlmostEqual(_freshness_score(oldest, config, now), 0.0)
+        self.assertAlmostEqual(_freshness_score(middle, config, now), 0.5)
+        self.assertAlmostEqual(_freshness_score(newest, config, now), 1.0)
 
 
 if __name__ == "__main__":

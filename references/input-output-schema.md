@@ -13,6 +13,7 @@ target_tags: ["agentic AI"]
 channel_ids: ["UCxxxxxxxxxxxxxxxxxxxxxx"]
 channel_urls: ["https://www.youtube.com/@example"]
 published_after: "2026-06-01T00:00:00Z"
+lookback_days: 7
 zones: [east_asia, europe, north_america]
 region_code: null
 region_codes: []
@@ -26,6 +27,10 @@ cache_enabled: true
 
 Dates must be RFC 3339 values with `Z` or an explicit UTC offset. Channel URLs
 must use `/channel/UC...` or `/@handle`.
+
+When `published_after` is omitted, `lookback_days: 7` generates a rolling
+seven-day UTC start time. Set an explicit `published_after` to override it, or
+set `lookback_days: null` to disable the default time window.
 
 The default zone preset searches representative markets in East Asia
 (`JP`, `KR`, `TW`, `HK`), Europe (`GB`, `DE`, `FR`), and North America

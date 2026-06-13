@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from .text_matcher import collect_matches, has_any_match, match_keywords
@@ -101,16 +101,31 @@ def _component_score(matches: list[str], match_cap: int = 3) -> float:
     return min(1.0, len(set(matches)) / match_cap)
 
 
-def _freshness_score(video: dict, now: datetime) -> float:
+def _freshness_score(video: dict, config: dict, now: datetime) -> float:
     published_at = _parse_dt(video.get("published_at"))
     if not published_at:
         return 0.0
-    days = max(0.0, (now - published_at.astimezone(timezone.utc)).total_seconds() / 86400)
-    if days <= 1:
-        return 1.0
-    if days >= 30:
-        return 0.0
-    return max(0.0, 1.0 - (days / 30.0))
+    published_at = published_at.astimezone(timezone.utc)
+    window_end = _parse_dt(config.get("published_before")) or now
+    window_end = min(window_end.astimezone(timezone.utc), now)
+    window_start = _parse_dt(config.get("published_after"))
+    if window_start:
+        window_start = window_start.astimezone(timezone.utc)
+        window_seconds = max(1.0, (window_end - window_start).total_seconds())
+        seven_days_seconds = timedelta(days=7).total_seconds()
+        if window_seconds <= seven_days_seconds:
+            return 1.0
+        age_seconds = max(0.0, (window_end - published_at).total_seconds())
+        if age_seconds <= seven_days_seconds:
+            return 1.0
+        decay_span = window_seconds - seven_days_seconds
+        decay_position = min(1.0, (age_seconds - seven_days_seconds) / decay_span)
+        return 1.0 - 0.50 * decay_position
+    window_start = window_end.replace() - timedelta(days=30)
+    window_seconds = max(1.0, (window_end - window_start).total_seconds())
+    position = (published_at - window_start).total_seconds() / window_seconds
+    position = max(0.0, min(1.0, position))
+    return position
 
 
 def _engagement_score(video: dict) -> float:
@@ -136,7 +151,7 @@ def _score_components(
         "tags": round(0.25 * _component_score(matches.get("tags", []), match_cap), 4),
         "description": round(0.20 * _component_score(matches.get("description", []), match_cap), 4),
         "channel": round(0.10 * channel_score, 4),
-        "freshness": round(0.10 * _freshness_score(video, now), 4),
+        "freshness": round(0.10 * _freshness_score(video, config, now), 4),
         "engagement": round(0.05 * _engagement_score(video), 4),
     }
 
