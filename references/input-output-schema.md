@@ -40,6 +40,20 @@ include_shorts: false
 reject_possible_ads: true
 reject_entertainment: true
 reject_exam_training: true
+blocked_exam_training_channel_names:
+  - Vajiram and Ravi
+  - Drishti IAS
+  - Vision IAS
+  - StudyIQ IAS
+  - PW OnlyIAS
+  - NEXT IAS
+  - 資格の学校TAC
+  - LEC東京リーガルマインド
+  - 공단기
+  - 해커스공무원
+  - 中公教育
+  - 华图教育
+  - 粉笔公考
 output_dir: null
 cache_enabled: true
 ```

@@ -25,6 +25,14 @@ class ConfigAndChannelTests(unittest.TestCase):
         self.assertTrue(config["reject_possible_ads"])
         self.assertTrue(config["reject_entertainment"])
         self.assertTrue(config["reject_exam_training"])
+        self.assertIn(
+            "Vajiram and Ravi",
+            config["blocked_exam_training_channel_names"],
+        )
+        self.assertIn("Drishti IAS", config["blocked_exam_training_channel_names"])
+        self.assertIn("資格の学校TAC", config["blocked_exam_training_channel_names"])
+        self.assertIn("공단기", config["blocked_exam_training_channel_names"])
+        self.assertIn("中公教育", config["blocked_exam_training_channel_names"])
         self.assertEqual(config["max_videos_per_channel"], 1)
         self.assertEqual(config["engagement_prior_views"], 1000)
         self.assertEqual(config["channel_quality_scores"], {})
@@ -48,6 +56,14 @@ class ConfigAndChannelTests(unittest.TestCase):
             apply_defaults({
                 "topic": "signal",
                 "channel_quality_scores": {"channel": 1.5},
+                "cache_enabled": False,
+            })
+
+    def test_rejects_invalid_exam_training_name_list(self):
+        with self.assertRaisesRegex(ConfigurationError, "string array"):
+            apply_defaults({
+                "topic": "signal",
+                "blocked_exam_training_channel_names": "Vajiram and Ravi",
                 "cache_enabled": False,
             })
 

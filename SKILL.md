@@ -107,7 +107,9 @@ After a successful run, use one canonical presentation:
   for view growth and Bayesian smoothing for engagement.
 - Keep `exclude_keywords` in local filtering; long negative API queries reduce recall.
 - Exclude Academy, coaching, civil-service exam, and other test-preparation
-  channels when `reject_exam_training` is enabled.
+  channels when `reject_exam_training` is enabled. Reject known institutions
+  from `blocked_exam_training_channel_names`, then use exam-term plus training-
+  intent combinations for unknown channels.
 - Keep at most `max_videos_per_channel` ranked videos from one channel per
   topic result; the default is one.
 - Prefer `channel_watch` for recurring known-channel monitoring.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -75,6 +76,54 @@ EXAM_TRAINING_CONTENT_TERMS = [
     "試験対策講座",
     "공무원 시험 준비",
 ]
+EXAM_ABBREVIATIONS = ["upsc", "ias", "cse"]
+EXAM_COACHING_QUALIFIERS = [
+    "coaching",
+    "preparation",
+    "prep",
+    "course",
+    "batch",
+    "classes",
+    "test series",
+    "mains",
+    "prelims",
+    "optional",
+    "answer writing",
+]
+
+
+def _has_token_phrase(text: str, term: str) -> bool:
+    return bool(
+        re.search(
+            rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])",
+            text,
+        )
+    )
+
+
+def _is_exam_training(
+    video: dict,
+    text: str,
+    channel_title: str,
+    config: dict,
+) -> bool:
+    known_institutions = config.get("blocked_exam_training_channel_names") or []
+    if match_keywords(channel_title, known_institutions):
+        return True
+    if match_keywords(channel_title, EXAM_TRAINING_CHANNEL_TERMS):
+        return True
+    if match_keywords(text, EXAM_TRAINING_CONTENT_TERMS):
+        return True
+    combined_text = f"{channel_title} {text}"
+    has_exam_abbreviation = any(
+        _has_token_phrase(combined_text, term)
+        for term in EXAM_ABBREVIATIONS
+    )
+    has_coaching_qualifier = any(
+        _has_token_phrase(combined_text, term)
+        for term in EXAM_COACHING_QUALIFIERS
+    )
+    return has_exam_abbreviation and has_coaching_qualifier
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -111,10 +160,7 @@ def _quality_flags(video: dict, config: dict) -> dict[str, bool]:
     channel_title = str(video.get("channel_title") or "").casefold()
     possible_ad = bool(match_keywords(text, LOW_QUALITY_TERMS))
     possible_entertainment = bool(match_keywords(text, ENTERTAINMENT_TERMS))
-    possible_exam_training = bool(
-        match_keywords(channel_title, EXAM_TRAINING_CHANNEL_TERMS)
-        or match_keywords(text, EXAM_TRAINING_CONTENT_TERMS)
-    )
+    possible_exam_training = _is_exam_training(video, text, channel_title, config)
     return {
         "is_short": _is_short(video, int(config.get("shorts_max_duration_seconds") or 60)),
         "possible_ad": possible_ad,

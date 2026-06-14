@@ -1,5 +1,5 @@
 name: hermes-youtube-signal-scout
-version: 0.4.1
+version: 0.4.2
 description: >
   Discover, hydrate, filter, and rank YouTube videos for a topic, keyword group,
   tag set, channel pool, and time window using YouTube Data API v3.
@@ -48,6 +48,39 @@ defaults:
   reject_possible_ads: true
   reject_entertainment: true
   reject_exam_training: true
+  blocked_exam_training_channel_names:
+    - Vajiram and Ravi
+    - Drishti IAS
+    - Vision IAS
+    - StudyIQ IAS
+    - PW OnlyIAS
+    - NEXT IAS
+    - InsightsIAS
+    - ForumIAS
+    - Shankar IAS Academy
+    - Rau's IAS Study Circle
+    - Unacademy UPSC
+    - BYJU'S IAS
+    - Adda247
+    - Testbook
+    - 資格の学校TAC
+    - LEC東京リーガルマインド
+    - アガルート
+    - クレアール
+    - 公務員試験予備校EYE
+    - スタディング
+    - 공단기
+    - 메가공무원
+    - 해커스공무원
+    - 에듀윌 공무원
+    - 박문각 공무원
+    - 中公教育
+    - 华图教育
+    - 華圖教育
+    - 粉笔公考
+    - 粉筆公考
+    - 粉笔教育
+    - 粉筆教育
 quota_policy:
   max_search_pages_per_run: 1
   max_videos_per_hydration_batch: 50

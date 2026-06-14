@@ -64,7 +64,7 @@ class MarkdownWriterTests(unittest.TestCase):
             self.assertIn("| 2026-06-09 | 02:05 | 12,345 |", markdown)
             self.assertIn("命中排除词：sponsored。", markdown)
             self.assertIn("101 units (search×1, videos×1)", markdown)
-            self.assertIn("hermes-youtube-signal-scout v0.4.1", markdown)
+            self.assertIn("hermes-youtube-signal-scout v0.4.2", markdown)
             self.assertEqual(json.loads(json_path.read_text(encoding="utf-8")), self.output)
             self.assertEqual(self.output["output_files"]["markdown"], str(markdown_path))
             self.assertEqual(self.output["output_files"]["json"], str(json_path))
