@@ -25,12 +25,28 @@ class ConfigAndChannelTests(unittest.TestCase):
         self.assertTrue(config["reject_possible_ads"])
         self.assertTrue(config["reject_entertainment"])
         self.assertEqual(config["max_videos_per_channel"], 1)
+        self.assertEqual(config["engagement_prior_views"], 1000)
+        self.assertEqual(config["channel_quality_scores"], {})
 
     def test_rejects_invalid_channel_limit(self):
         with self.assertRaisesRegex(ConfigurationError, "positive integer"):
             apply_defaults({
                 "topic": "signal",
                 "max_videos_per_channel": 0,
+                "cache_enabled": False,
+            })
+
+    def test_rejects_invalid_ranking_configuration(self):
+        with self.assertRaisesRegex(ConfigurationError, "engagement_prior_views"):
+            apply_defaults({
+                "topic": "signal",
+                "engagement_prior_views": 0,
+                "cache_enabled": False,
+            })
+        with self.assertRaisesRegex(ConfigurationError, "channel_quality_scores"):
+            apply_defaults({
+                "topic": "signal",
+                "channel_quality_scores": {"channel": 1.5},
                 "cache_enabled": False,
             })
 

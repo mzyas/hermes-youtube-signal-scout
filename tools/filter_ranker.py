@@ -118,6 +118,16 @@ def _component_score(matches: list[str], match_cap: int = 3) -> float:
     return min(1.0, len(set(matches)) / match_cap)
 
 
+def _topic_relevance_score(matches: dict[str, list[str]], match_cap: int) -> float:
+    return max(0.0, min(1.0, (
+        0.40 * _component_score(matches.get("title", []), match_cap)
+        + 0.25 * _component_score(matches.get("tags", []), match_cap)
+        + 0.20 * _component_score(matches.get("description", []), match_cap)
+        + 0.10 * _component_score(matches.get("topic_categories", []), match_cap)
+        + 0.05 * _component_score(matches.get("channel_title", []), match_cap)
+    )))
+
+
 def _freshness_score(video: dict, config: dict, now: datetime) -> float:
     published_at = _parse_dt(video.get("published_at"))
     if not published_at:
@@ -145,31 +155,148 @@ def _freshness_score(video: dict, config: dict, now: datetime) -> float:
     return position
 
 
-def _engagement_score(video: dict) -> float:
+def _view_velocity(video: dict, now: datetime) -> tuple[float, str]:
+    views = _stat(video, "view_count")
+    previous = video.get("previous_statistics") or {}
+    captured_at = _parse_dt(previous.get("captured_at"))
+    if captured_at:
+        elapsed_hours = (now - captured_at.astimezone(timezone.utc)).total_seconds() / 3600
+        if elapsed_hours > 0:
+            delta = max(0, views - int(previous.get("view_count") or 0))
+            return delta / elapsed_hours, "snapshot_delta"
+    published_at = _parse_dt(video.get("published_at"))
+    if not published_at:
+        return 0.0, "unavailable"
+    age_hours = max(1.0, (now - published_at.astimezone(timezone.utc)).total_seconds() / 3600)
+    return views / age_hours, "lifetime_average"
+
+
+def _velocity_percentiles(
+    videos: list[dict], now: datetime
+) -> dict[str, tuple[float, float, str]]:
+    measured = [
+        (str(video.get("video_id")), *_view_velocity(video, now))
+        for video in videos
+        if video.get("video_id")
+    ]
+    unique = sorted({value for _, value, _ in measured})
+    if len(unique) <= 1:
+        percentile_by_value = {value: 0.5 for value in unique}
+    else:
+        percentile_by_value = {
+            value: index / (len(unique) - 1)
+            for index, value in enumerate(unique)
+        }
+    return {
+        video_id: (percentile_by_value.get(value, 0.0), value, source)
+        for video_id, value, source in measured
+    }
+
+
+def _engagement_baseline(videos: list[dict]) -> float:
+    views = sum(_stat(video, "view_count") for video in videos)
+    interactions = sum(
+        _stat(video, "like_count") + _stat(video, "comment_count") * 3
+        for video in videos
+    )
+    return interactions / views if views > 0 else 0.0
+
+
+def _smoothed_engagement_score(
+    video: dict,
+    baseline: float,
+    prior_views: int,
+) -> tuple[float, float]:
     views = _stat(video, "view_count")
     likes = _stat(video, "like_count")
     comments = _stat(video, "comment_count")
-    if views <= 0:
-        return 0.0
-    ratio = (likes + comments * 2) / views
-    return max(0.0, min(1.0, ratio * 20))
+    smoothed_rate = (
+        likes + comments * 3 + baseline * prior_views
+    ) / max(1, views + prior_views)
+    return max(0.0, min(1.0, smoothed_rate * 20)), smoothed_rate
+
+
+def _channel_credibility_score(
+    video: dict,
+    matches: dict[str, list[str]],
+    flags: dict[str, bool],
+    config: dict,
+) -> float:
+    channel_id = str(video.get("channel_id") or "")
+    configured = config.get("channel_quality_scores") or {}
+    if channel_id in configured:
+        return max(0.0, min(1.0, float(configured[channel_id])))
+    if channel_id in set(config.get("trusted_channel_ids") or []):
+        return 1.0
+    stats = video.get("statistics") or {}
+    metadata = 0.5 * bool(channel_id) + 0.5 * bool(video.get("channel_title"))
+    topic_alignment = 1.0 if matches.get("channel_title") else 0.0
+    quality_history_proxy = 0.0 if flags.get("low_signal") else 1.0
+    statistics_completeness = sum(
+        key in stats for key in ("view_count", "like_count", "comment_count")
+    ) / 3
+    return (
+        0.25 * metadata
+        + 0.25 * topic_alignment
+        + 0.25 * quality_history_proxy
+        + 0.25 * statistics_completeness
+    )
+
+
+def _information_completeness_score(video: dict) -> float:
+    stats = video.get("statistics") or {}
+    return (
+        0.15 * bool(str(video.get("title") or "").strip())
+        + 0.25 * min(1.0, len(str(video.get("description") or "").strip()) / 100)
+        + 0.20 * min(1.0, len(video.get("tags") or []) / 3)
+        + 0.10 * bool(video.get("category_id"))
+        + 0.10 * (int(video.get("duration_seconds") or 0) > 0)
+        + 0.20 * (
+            sum(key in stats for key in ("view_count", "like_count", "comment_count")) / 3
+        )
+    )
 
 
 def _score_components(
-    video: dict, matches: dict[str, list[str]], config: dict, now: datetime
-) -> dict[str, float]:
+    video: dict,
+    matches: dict[str, list[str]],
+    flags: dict[str, bool],
+    config: dict,
+    now: datetime,
+    velocity_score: float,
+    engagement_baseline: float,
+) -> tuple[dict[str, float], dict[str, object]]:
     match_cap = int(config.get("score_match_cap") or 3)
-    trusted = set(config.get("trusted_channel_ids") or [])
-    channel_score = 1.0 if (
-        matches.get("channel_title") or video.get("channel_id") in trusted
-    ) else 0.0
-    return {
-        "title": round(0.30 * _component_score(matches.get("title", []), match_cap), 4),
-        "tags": round(0.25 * _component_score(matches.get("tags", []), match_cap), 4),
-        "description": round(0.20 * _component_score(matches.get("description", []), match_cap), 4),
-        "channel": round(0.10 * channel_score, 4),
-        "freshness": round(0.10 * _freshness_score(video, config, now), 4),
-        "engagement": round(0.05 * _engagement_score(video), 4),
+    engagement_score, smoothed_rate = _smoothed_engagement_score(
+        video,
+        engagement_baseline,
+        int(config.get("engagement_prior_views") or 1000),
+    )
+    raw_scores = {
+        "topic_relevance": _topic_relevance_score(matches, match_cap),
+        "freshness": _freshness_score(video, config, now),
+        "view_velocity": velocity_score,
+        "smoothed_engagement": engagement_score,
+        "channel_credibility": _channel_credibility_score(
+            video, matches, flags, config
+        ),
+        "information_completeness": _information_completeness_score(video),
+    }
+    weights = {
+        "topic_relevance": 0.45,
+        "freshness": 0.15,
+        "view_velocity": 0.15,
+        "smoothed_engagement": 0.10,
+        "channel_credibility": 0.10,
+        "information_completeness": 0.05,
+    }
+    components = {
+        name: round(weights[name] * value, 4)
+        for name, value in raw_scores.items()
+    }
+    return components, {
+        "raw_scores": {name: round(value, 4) for name, value in raw_scores.items()},
+        "smoothed_engagement_rate": round(smoothed_rate, 6),
     }
 
 
@@ -185,6 +312,7 @@ def _accepted_video(
     components: dict[str, float],
     flags: dict[str, bool],
     candidate_index: int,
+    ranking_signals: dict[str, object],
 ) -> dict:
     video_id = video["video_id"]
     return {
@@ -202,6 +330,7 @@ def _accepted_video(
         "matched_fields": matches,
         "topic_score": score,
         "score_components": components,
+        "ranking_signals": ranking_signals,
         "quality_flags": flags,
         "reason": "命中主题字段并通过硬过滤，topic_score 达到阈值。",
         "_candidate_index": candidate_index,
@@ -269,6 +398,13 @@ def _apply_channel_limit(
 
 def filter_and_rank(videos: list[dict], config: dict) -> dict:
     now = datetime.now(timezone.utc)
+    eligible_videos = [
+        video
+        for video in videos
+        if not _hard_reject_reason(video, config, _quality_flags(video, config))
+    ]
+    velocity_scores = _velocity_percentiles(eligible_videos, now)
+    engagement_baseline = _engagement_baseline(eligible_videos)
     accepted: list[dict] = []
     rejected: list[dict] = []
     threshold_value = config.get("topic_score_threshold", 0.55)
@@ -289,7 +425,23 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
                 "reason": "未命中 include_keywords 或 target_tags。",
             })
             continue
-        components = _score_components(video, matches, config, now)
+        velocity_score, velocity, velocity_source = velocity_scores.get(
+            str(video.get("video_id")),
+            (0.0, 0.0, "unavailable"),
+        )
+        components, ranking_signals = _score_components(
+            video,
+            matches,
+            flags,
+            config,
+            now,
+            velocity_score,
+            engagement_baseline,
+        )
+        ranking_signals.update({
+            "view_velocity_per_hour": round(velocity, 4),
+            "view_velocity_source": velocity_source,
+        })
         score = _topic_score(components)
         if score < threshold:
             rejected.append({"video_id": video.get("video_id"), "title": video.get("title", ""), "reason": f"topic_score {score} 低于阈值 {threshold}。"})
@@ -302,6 +454,7 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
                 components,
                 flags,
                 candidate_index,
+                ranking_signals,
             )
         )
     max_per_channel = max(1, int(config.get("max_videos_per_channel") or 1))

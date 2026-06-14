@@ -102,7 +102,11 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["rank", "topic_score", "title", "url", "channel_title", "published_at", "duration_seconds", "view_count"]
+            "required": ["rank", "topic_score", "title", "url", "channel_title", "published_at", "duration_seconds", "view_count", "score_components", "ranking_signals"],
+            "properties": {
+              "score_components": {"type": "object"},
+              "ranking_signals": {"type": "object"}
+            }
           }
         },
         "rejected": {"type": "array", "items": {"type": "object"}},

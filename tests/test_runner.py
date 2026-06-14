@@ -290,6 +290,10 @@ class RunnerTests(unittest.TestCase):
             )
             self.assertEqual(second["run_stats"]["cache_hits"], 0)
             self.assertEqual(second["quota_usage_estimate"]["videos_list_calls"], 1)
+            self.assertEqual(
+                second["videos"][0]["ranking_signals"]["view_velocity_source"],
+                "snapshot_delta",
+            )
 
 
 if __name__ == "__main__":

@@ -61,6 +61,12 @@
     "include_shorts": {"type": "boolean", "default": false},
     "shorts_max_duration_seconds": {"type": "integer", "minimum": 1, "default": 60},
     "topic_score_threshold": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.45},
+    "engagement_prior_views": {"type": "integer", "minimum": 1, "default": 1000},
+    "channel_quality_scores": {
+      "type": "object",
+      "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1},
+      "default": {}
+    },
     "score_match_cap": {"type": "integer", "minimum": 1, "default": 3},
     "reject_possible_ads": {"type": "boolean", "default": true},
     "reject_entertainment": {"type": "boolean", "default": true},

@@ -31,6 +31,9 @@ localized_queries:
 max_results: 10
 target_results: 10
 max_videos_per_channel: 1
+engagement_prior_views: 1000
+channel_quality_scores:
+  UCxxxxxxxxxxxxxxxxxxxxxx: 0.9
 max_search_pages: 1
 adaptive_max_search_pages: 1
 include_shorts: false
@@ -119,6 +122,8 @@ The result preserves the 0.1 top-level fields and adds:
   diversity statistics for the final topic result.
 - `warnings`: non-fatal cache or output warnings.
 - `score_components`: weighted score contribution for each accepted video.
+- `ranking_signals`: raw six-dimension scores, smoothed engagement rate, view
+  velocity, and whether velocity came from snapshots or lifetime average.
 - `report_markdown`: canonical user-facing report; agents must output it verbatim.
 - `report_json`: canonical JSON containing the same summary, video columns,
   rejected items, run statistics, and warnings as the Markdown report.

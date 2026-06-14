@@ -9,7 +9,13 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from .cache_store import connect, get_cached_video, init_db, save_video
+from .cache_store import (
+    connect,
+    get_cached_video,
+    get_previous_statistics,
+    init_db,
+    save_video,
+)
 from .channel_resolver import parse_channel_reference, resolve_channel
 from .channel_watch import fetch_latest_uploads
 from .config import apply_defaults, load_config
@@ -116,6 +122,9 @@ def _hydrate_with_cache(
     if connection:
         try:
             for video in fresh:
+                previous = get_previous_statistics(connection, video["video_id"])
+                if previous:
+                    video["previous_statistics"] = previous
                 save_video(connection, video)
         except sqlite3.Error as exc:
             warnings.append(f"Could not update cache: {exc}")

@@ -1,5 +1,5 @@
 name: hermes-youtube-signal-scout
-version: 0.3.1
+version: 0.4.0
 description: >
   Discover, hydrate, filter, and rank YouTube videos for a topic, keyword group,
   tag set, channel pool, and time window using YouTube Data API v3.
@@ -36,6 +36,8 @@ defaults:
   max_duration_seconds: 3600
   include_shorts: false
   topic_score_threshold: 0.45
+  engagement_prior_views: 1000
+  channel_quality_scores: {}
   output_dir: null
   cache_enabled: true
   cache_path: null

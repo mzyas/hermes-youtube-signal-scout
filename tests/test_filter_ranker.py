@@ -1,7 +1,12 @@
 import unittest
 from datetime import datetime, timezone
 
-from tools.filter_ranker import _freshness_score, filter_and_rank
+from tools.filter_ranker import (
+    _freshness_score,
+    _smoothed_engagement_score,
+    _view_velocity,
+    filter_and_rank,
+)
 
 
 class FilterRankerTests(unittest.TestCase):
@@ -276,8 +281,127 @@ class FilterRankerTests(unittest.TestCase):
         config["trusted_channel_ids"] = ["trusted"]
         result = filter_and_rank(videos, config)
         self.assertIn("未来", result["rejected"][0]["reason"])
-        self.assertEqual(result["videos"][0]["score_components"]["channel"], 0.1)
-        self.assertEqual(result["videos"][0]["score_components"]["engagement"], 0.0)
+        self.assertEqual(
+            result["videos"][0]["score_components"]["channel_credibility"],
+            0.1,
+        )
+        self.assertEqual(
+            result["videos"][0]["score_components"]["smoothed_engagement"],
+            0.0,
+        )
+
+    def test_score_uses_six_weighted_components(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            trusted_channel_ids=["trusted"],
+        )
+        video = {
+            "video_id": "six-components",
+            "title": "日銀 金融政策 利上げ",
+            "description": "日本経済と金融政策を詳しく説明する動画です。" * 5,
+            "tags": ["日銀", "金融政策", "日本経済"],
+            "category_id": "25",
+            "channel_id": "trusted",
+            "channel_title": "日銀 Research",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {
+                "view_count": 10000,
+                "like_count": 500,
+                "comment_count": 50,
+            },
+        }
+        ranked = filter_and_rank([video], config)["videos"][0]
+        self.assertEqual(
+            set(ranked["score_components"]),
+            {
+                "topic_relevance",
+                "freshness",
+                "view_velocity",
+                "smoothed_engagement",
+                "channel_credibility",
+                "information_completeness",
+            },
+        )
+        self.assertAlmostEqual(
+            ranked["topic_score"],
+            sum(ranked["score_components"].values()),
+            places=4,
+        )
+        self.assertEqual(ranked["score_components"]["channel_credibility"], 0.1)
+
+    def test_view_velocity_prefers_snapshot_delta(self):
+        now = datetime(2026, 6, 14, 12, tzinfo=timezone.utc)
+        snapshot_video = {
+            "published_at": "2026-06-10T00:00:00Z",
+            "statistics": {"view_count": 2200},
+            "previous_statistics": {
+                "view_count": 1000,
+                "captured_at": "2026-06-14T06:00:00Z",
+            },
+        }
+        velocity, source = _view_velocity(snapshot_video, now)
+        self.assertAlmostEqual(velocity, 200.0)
+        self.assertEqual(source, "snapshot_delta")
+
+        first_seen = {
+            "published_at": "2026-06-14T02:00:00Z",
+            "statistics": {"view_count": 1000},
+        }
+        velocity, source = _view_velocity(first_seen, now)
+        self.assertAlmostEqual(velocity, 100.0)
+        self.assertEqual(source, "lifetime_average")
+
+    def test_higher_view_velocity_improves_rank_for_equal_relevance(self):
+        config = dict(self.config)
+        config.update(topic_score_threshold=0, min_views=0)
+        common = {
+            "title": "日銀 金融政策",
+            "description": "金融政策の解説",
+            "tags": ["日銀"],
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {
+                "like_count": 10,
+                "comment_count": 1,
+            },
+        }
+        videos = [
+            {
+                **common,
+                "video_id": "slow",
+                "channel_id": "slow-channel",
+                "channel_title": "Macro",
+                "statistics": {**common["statistics"], "view_count": 1000},
+            },
+            {
+                **common,
+                "video_id": "fast",
+                "channel_id": "fast-channel",
+                "channel_title": "Macro",
+                "statistics": {**common["statistics"], "view_count": 10000},
+            },
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(result["videos"][0]["video_id"], "fast")
+        self.assertGreater(
+            result["videos"][0]["score_components"]["view_velocity"],
+            result["videos"][1]["score_components"]["view_velocity"],
+        )
+
+    def test_bayesian_engagement_reduces_low_view_outlier(self):
+        low_view = {
+            "statistics": {"view_count": 10, "like_count": 2, "comment_count": 0}
+        }
+        score, rate = _smoothed_engagement_score(
+            low_view,
+            baseline=0.02,
+            prior_views=1000,
+        )
+        self.assertLess(rate, 0.03)
+        self.assertAlmostEqual(score, rate * 20)
 
     def test_reject_possible_ads_is_configurable(self):
         video = {

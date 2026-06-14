@@ -22,20 +22,20 @@ valid and matches video tags.
 
 ## Score
 
-Each accepted video exposes weighted `score_components`:
+Each accepted video exposes six weighted `score_components`:
 
 ```text
-title       0.30
-tags        0.25
-description 0.20
-channel     0.10
-freshness   0.10
-engagement  0.05
+topic_relevance           0.45
+freshness                 0.15
+view_velocity             0.15
+smoothed_engagement       0.10
+channel_credibility       0.10
+information_completeness  0.05
 ```
 
-Channel points require a channel-title keyword match or a channel ID listed in
-`trusted_channel_ids`; there is no unconditional baseline. Missing statistics
-produce zero engagement rather than an error.
+Topic relevance combines title, tags, description, topic categories, and
+channel-title matches. Their internal weights are `0.40`, `0.25`, `0.20`,
+`0.10`, and `0.05`, then the combined value is multiplied by `0.45`.
 
 For a publication window of seven days or less, every video that passes the
 time-window hard filter receives the full raw freshness score of `1.0`.
@@ -49,6 +49,41 @@ For a longer window, including a 30-day search:
 The default configuration creates a rolling seven-day `published_after`. If
 that default is disabled entirely, freshness falls back to linear position
 within a rolling 30-day window.
+
+## Growth and Engagement
+
+View velocity uses the latest two locally cached Data API snapshots when
+available:
+
+```text
+(current views - previous views) / elapsed hours
+```
+
+On first discovery it falls back to `current views / hours since publication`.
+Velocity is converted to a percentile among the current candidate set so large
+established channels do not receive an automatic absolute-view advantage. The
+cache retains the latest 20 snapshots per video.
+
+Engagement uses Bayesian smoothing:
+
+```text
+(likes + comments * 3 + candidate_baseline * prior_views)
+/ (views + prior_views)
+```
+
+`engagement_prior_views` defaults to `1000`, preventing very small samples from
+receiving extreme scores.
+
+## Channel and Information Quality
+
+`trusted_channel_ids` receive full channel credibility. Optional
+`channel_quality_scores` assigns reviewed scores from `0` to `1`. Other
+channels receive a conservative Data-API-only proxy based on channel metadata
+presence, channel-title topic alignment, absence of low-quality flags, and
+statistics completeness. This score does not claim factual accuracy.
+
+Information completeness measures title, description depth, tags, category,
+duration, and statistics availability.
 
 `topic_score` is the sum of components, clamped to `[0, 1]`. Accepted videos are
 sorted by score, deduplicated by channel, and then limited by `max_results`.
