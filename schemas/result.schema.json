@@ -63,13 +63,14 @@
         "properties": {
           "video_id": {"type": ["string", "null"]},
           "title": {"type": "string"},
+          "reason_code": {"type": ["string", "null"]},
           "reason": {"type": "string"}
         }
       }
     },
     "run_stats": {
       "type": "object",
-      "required": ["candidate_count", "deduplicated_count", "cache_hits", "hydrated_count", "accepted_count", "rejected_count", "target_results", "target_met", "api_calls"],
+      "required": ["candidate_count", "deduplicated_count", "cache_hits", "hydrated_count", "accepted_count", "rejected_count", "target_results", "target_met", "channel_duplicate_count", "unique_channel_count", "api_calls"],
       "properties": {
         "candidate_count": {"type": "integer", "minimum": 0},
         "deduplicated_count": {"type": "integer", "minimum": 0},
@@ -79,6 +80,8 @@
         "rejected_count": {"type": "integer", "minimum": 0},
         "target_results": {"type": "integer", "minimum": 1},
         "target_met": {"type": "boolean"},
+        "channel_duplicate_count": {"type": "integer", "minimum": 0},
+        "unique_channel_count": {"type": "integer", "minimum": 0},
         "api_calls": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
       }
     },

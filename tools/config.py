@@ -87,6 +87,13 @@ def _manual_validate(config: dict) -> None:
             raise ConfigurationError(
                 f"localized_queries.{language} must be a non-empty string array"
             )
+    max_per_channel = config.get("max_videos_per_channel")
+    if (
+        not isinstance(max_per_channel, int)
+        or isinstance(max_per_channel, bool)
+        or max_per_channel < 1
+    ):
+        raise ConfigurationError("max_videos_per_channel must be a positive integer")
 
 
 def validate_config(config: dict) -> None:

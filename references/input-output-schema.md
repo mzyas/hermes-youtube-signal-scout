@@ -30,6 +30,7 @@ localized_queries:
   fr: ["actualité politique", "politique"]
 max_results: 10
 target_results: 10
+max_videos_per_channel: 1
 max_search_pages: 1
 adaptive_max_search_pages: 1
 include_shorts: false
@@ -114,6 +115,8 @@ The result preserves the 0.1 top-level fields and adds:
 
 - `version`: runtime skill version.
 - `run_stats`: candidate, cache, hydration, acceptance, and API call counts.
+- `run_stats.channel_duplicate_count` and `unique_channel_count`: channel
+  diversity statistics for the final topic result.
 - `warnings`: non-fatal cache or output warnings.
 - `score_components`: weighted score contribution for each accepted video.
 - `report_markdown`: canonical user-facing report; agents must output it verbatim.

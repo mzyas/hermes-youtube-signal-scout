@@ -5,12 +5,16 @@ from pathlib import Path
 from tools.runner import run
 
 
-def video_resource(video_id: str, title: str = "signal update") -> dict:
+def video_resource(
+    video_id: str,
+    title: str = "signal update",
+    channel_id: str | None = None,
+) -> dict:
     return {
         "id": video_id,
         "snippet": {
             "title": title,
-            "channelId": "UC1234567890123456789012",
+            "channelId": channel_id or f"channel-{video_id}",
             "channelTitle": "Signal Desk",
             "publishedAt": "2026-06-10T00:00:00Z",
             "description": "signal analysis",
@@ -54,7 +58,10 @@ class FakeYouTubeClient:
         if endpoint == "videos":
             return {
                 "items": [
-                    video_resource(value)
+                    video_resource(
+                        value,
+                        channel_id="duplicate-channel" if value.startswith("dup-") else None,
+                    )
                     for value in str(params["id"]).split(",")
                 ]
             }
@@ -91,6 +98,37 @@ def base_config(**overrides):
 
 
 class RunnerTests(unittest.TestCase):
+    def test_channel_duplicates_trigger_region_expansion_until_target(self):
+        client = RegionalFakeYouTubeClient({
+            "US": ["dup-1", "dup-2"],
+            "JP": [],
+            "HK": [],
+            "GB": [],
+            "KR": ["unique-1"],
+            "TW": [],
+            "DE": [],
+            "FR": [],
+            "CA": [],
+        })
+        result = run(
+            base_config(
+                region_code=None,
+                region_priority_tiers=[
+                    ["US", "JP", "HK", "GB"],
+                    ["KR", "TW", "DE", "FR", "CA"],
+                ],
+                target_results=2,
+                max_results=2,
+            ),
+            client=client,
+        )
+
+        self.assertEqual(len(result["videos"]), 2)
+        self.assertEqual(result["query_plan"]["region_tiers_searched"], 2)
+        self.assertEqual(result["run_stats"]["channel_duplicate_count"], 1)
+        self.assertEqual(result["run_stats"]["unique_channel_count"], 2)
+        self.assertTrue(result["run_stats"]["target_met"])
+
     def test_region_priority_stops_after_first_tier_when_target_is_met(self):
         client = RegionalFakeYouTubeClient({
             "US": [f"us-{index}" for index in range(10)],

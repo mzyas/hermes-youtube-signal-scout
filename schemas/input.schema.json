@@ -50,6 +50,7 @@
     "order": {"type": "string", "enum": ["date", "relevance", "viewCount", "rating"], "default": "date"},
     "max_results": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
     "target_results": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
+    "max_videos_per_channel": {"type": "integer", "minimum": 1, "maximum": 50, "default": 1},
     "max_search_pages": {"type": "integer", "minimum": 1, "maximum": 5, "default": 1},
     "adaptive_max_search_pages": {"type": "integer", "minimum": 0, "maximum": 4, "default": 1},
     "candidates_per_page": {"type": "integer", "minimum": 1, "maximum": 50, "default": 50},
