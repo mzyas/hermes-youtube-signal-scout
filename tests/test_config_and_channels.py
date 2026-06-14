@@ -24,6 +24,15 @@ class ConfigAndChannelTests(unittest.TestCase):
         self.assertEqual(config["include_keywords"], ["fallback topic"])
         self.assertTrue(config["reject_possible_ads"])
         self.assertTrue(config["reject_entertainment"])
+        self.assertEqual(config["max_videos_per_channel"], 1)
+
+    def test_rejects_invalid_channel_limit(self):
+        with self.assertRaisesRegex(ConfigurationError, "positive integer"):
+            apply_defaults({
+                "topic": "signal",
+                "max_videos_per_channel": 0,
+                "cache_enabled": False,
+            })
 
     def test_localized_queries_are_added_to_scoring_keywords(self):
         config = apply_defaults({

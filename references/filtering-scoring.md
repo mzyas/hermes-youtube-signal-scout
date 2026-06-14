@@ -51,4 +51,14 @@ that default is disabled entirely, freshness falls back to linear position
 within a rolling 30-day window.
 
 `topic_score` is the sum of components, clamped to `[0, 1]`. Accepted videos are
-sorted by score and then limited by `max_results`.
+sorted by score, deduplicated by channel, and then limited by `max_results`.
+
+By default, `max_videos_per_channel: 1` keeps only the highest-ranked video from
+each channel in one topic result. Ties are resolved by newer publication time,
+then higher view count, then original candidate order. Channel identity uses
+`channel_id`, falls back to a normalized `channel_title`, and treats videos
+without either field independently.
+
+Videos suppressed by this limit are added to `rejected` with
+`reason_code: channel_limit_exceeded`. The runner uses the channel-deduplicated
+accepted count when deciding whether to expand regions or fetch another page.

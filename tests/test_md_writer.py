@@ -41,6 +41,7 @@ class MarkdownWriterTests(unittest.TestCase):
                 {
                     "video_id": "rejected-1",
                     "title": "Sponsored | clip",
+                    "reason_code": "channel_limit_exceeded",
                     "reason": "命中排除词：sponsored。",
                 }
             ],
@@ -61,12 +62,16 @@ class MarkdownWriterTests(unittest.TestCase):
             self.assertIn("| 2026-06-09 | 02:05 | 12,345 |", markdown)
             self.assertIn("命中排除词：sponsored。", markdown)
             self.assertIn("101 units (search×1, videos×1)", markdown)
-            self.assertIn("hermes-youtube-signal-scout v0.3.0", markdown)
+            self.assertIn("hermes-youtube-signal-scout v0.3.1", markdown)
             self.assertEqual(json.loads(json_path.read_text(encoding="utf-8")), self.output)
             self.assertEqual(self.output["output_files"]["markdown"], str(markdown_path))
             self.assertEqual(self.output["output_files"]["json"], str(json_path))
             self.assertEqual(self.output["report_markdown"], markdown)
             self.assertEqual(self.output["report_json"]["videos"][0]["title"], "AI | bubble update")
+            self.assertEqual(
+                self.output["report_json"]["rejected"][0]["reason_code"],
+                "channel_limit_exceeded",
+            )
 
     def test_canonical_renderer_uses_table_format(self):
         markdown = render_markdown_report(self.output, {"version": "0.2.1"})

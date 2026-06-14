@@ -36,6 +36,16 @@ def _dedupe(values: list[str]) -> list[str]:
     return list(dict.fromkeys(value for value in values if value))
 
 
+def _output_channel_key(video: dict) -> str:
+    channel_id = str(video.get("channel_id") or "").strip()
+    if channel_id:
+        return f"id:{channel_id}"
+    channel_title = " ".join(str(video.get("channel_title") or "").split()).casefold()
+    if channel_title:
+        return f"title:{channel_title}"
+    return f"video:{video.get('video_id')}"
+
+
 def _channel_references(config: dict) -> list[str]:
     references = [
         *(config.get("channel_ids") or []),
@@ -253,6 +263,10 @@ def run(config: dict, client=None) -> dict:
     result["query_plan"]["search_page_count"] = total_search_pages
     result["query_plan"]["adaptive_search_pages"] = adaptive_pages_used
     result["quota_usage_estimate"] = summarize_calls(counted.calls)
+    channel_duplicate_count = sum(
+        item.get("reason_code") == "channel_limit_exceeded"
+        for item in result["rejected"]
+    )
     result["run_stats"] = {
         "candidate_count": raw_candidate_count,
         "deduplicated_count": len(candidate_ids),
@@ -262,6 +276,10 @@ def run(config: dict, client=None) -> dict:
         "rejected_count": len(result["rejected"]),
         "target_results": target_results,
         "target_met": len(result["videos"]) >= target_results,
+        "channel_duplicate_count": channel_duplicate_count,
+        "unique_channel_count": len({
+            _output_channel_key(video) for video in result["videos"]
+        }),
         "api_calls": dict(counted.calls),
     }
     if len(result["videos"]) < target_results:

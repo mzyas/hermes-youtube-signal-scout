@@ -53,6 +53,133 @@ class FilterRankerTests(unittest.TestCase):
         self.assertEqual(len(result["rejected"]), 1)
         self.assertIn("排除词", result["rejected"][0]["reason"])
 
+    def test_keeps_highest_scoring_video_per_channel(self):
+        config = dict(self.config)
+        config.update(topic_score_threshold=0, min_views=0)
+        videos = [
+            {
+                "video_id": "lower",
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": "same-channel",
+                "channel_title": "Macro Japan",
+                "published_at": "2026-06-09T00:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {"view_count": 1000},
+            },
+            {
+                "video_id": "higher",
+                "title": "日銀 金融政策 利上げ",
+                "description": "金融政策",
+                "tags": ["日銀", "日本経済"],
+                "channel_id": "same-channel",
+                "channel_title": "Macro Japan",
+                "published_at": "2026-06-08T00:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {"view_count": 1000},
+            },
+        ]
+        result = filter_and_rank(videos, config)
+
+        self.assertEqual([video["video_id"] for video in result["videos"]], ["higher"])
+        duplicate = next(
+            item for item in result["rejected"]
+            if item.get("reason_code") == "channel_limit_exceeded"
+        )
+        self.assertEqual(duplicate["video_id"], "lower")
+        self.assertIn("video_id=higher", duplicate["reason"])
+        self.assertEqual(
+            sum(
+                item.get("reason_code") == "channel_limit_exceeded"
+                for item in result["rejected"]
+            ),
+            1,
+        )
+
+    def test_channel_ties_use_date_views_then_candidate_order(self):
+        config = dict(self.config)
+        config.update(topic_score_threshold=0, min_views=0)
+
+        def candidate(video_id, channel_id, published_at, views):
+            return {
+                "video_id": video_id,
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": channel_id,
+                "channel_title": "",
+                "published_at": published_at,
+                "duration_seconds": 900,
+                "statistics": {"view_count": views},
+            }
+
+        videos = [
+            candidate("date-old", "date-channel", "2026-06-08T00:00:00Z", 1000),
+            candidate("date-new", "date-channel", "2026-06-09T00:00:00Z", 1000),
+            candidate("views-low", "views-channel", "2026-06-09T00:00:00Z", 1000),
+            candidate("views-high", "views-channel", "2026-06-09T00:00:00Z", 2000),
+            candidate("order-first", "order-channel", "2026-06-09T00:00:00Z", 1000),
+            candidate("order-second", "order-channel", "2026-06-09T00:00:00Z", 1000),
+        ]
+        result = filter_and_rank(videos, config)
+
+        self.assertEqual(
+            {video["video_id"] for video in result["videos"]},
+            {"date-new", "views-high", "order-first"},
+        )
+
+    def test_channel_title_fallback_and_missing_channel_identity(self):
+        config = dict(self.config)
+        config.update(topic_score_threshold=0, min_views=0)
+        base = {
+            "title": "日銀",
+            "description": "",
+            "tags": [],
+            "published_at": "2026-06-09T00:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 1000},
+        }
+        videos = [
+            {**base, "video_id": "title-1", "channel_id": "", "channel_title": " Macro   Japan "},
+            {**base, "video_id": "title-2", "channel_id": "", "channel_title": "macro japan"},
+            {**base, "video_id": "missing-1", "channel_id": "", "channel_title": ""},
+            {**base, "video_id": "missing-2", "channel_id": "", "channel_title": ""},
+        ]
+        result = filter_and_rank(videos, config)
+
+        self.assertEqual(
+            {video["video_id"] for video in result["videos"]},
+            {"title-1", "missing-1", "missing-2"},
+        )
+
+    def test_channel_limit_can_be_increased(self):
+        config = dict(self.config)
+        config.update(topic_score_threshold=0, min_views=0, max_videos_per_channel=2)
+        videos = [
+            {
+                "video_id": f"same-{index}",
+                "title": "日銀",
+                "description": "",
+                "tags": [],
+                "channel_id": "same-channel",
+                "channel_title": "",
+                "published_at": f"2026-06-0{index + 7}T00:00:00Z",
+                "duration_seconds": 900,
+                "statistics": {"view_count": 1000},
+            }
+            for index in range(3)
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(len(result["videos"]), 2)
+        self.assertEqual(
+            sum(
+                item.get("reason_code") == "channel_limit_exceeded"
+                for item in result["rejected"]
+            ),
+            1,
+        )
+
     def test_rejects_shorts_when_disabled(self):
         videos = [
             {

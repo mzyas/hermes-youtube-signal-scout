@@ -184,6 +184,7 @@ def _accepted_video(
     score: float,
     components: dict[str, float],
     flags: dict[str, bool],
+    candidate_index: int,
 ) -> dict:
     video_id = video["video_id"]
     return {
@@ -203,7 +204,67 @@ def _accepted_video(
         "score_components": components,
         "quality_flags": flags,
         "reason": "命中主题字段并通过硬过滤，topic_score 达到阈值。",
+        "_candidate_index": candidate_index,
     }
+
+
+def _channel_key(video: dict) -> str:
+    channel_id = str(video.get("channel_id") or "").strip()
+    if channel_id:
+        return f"id:{channel_id}"
+    channel_title = " ".join(str(video.get("channel_title") or "").split()).casefold()
+    if channel_title:
+        return f"title:{channel_title}"
+    return f"video:{video.get('video_id') or video.get('_candidate_index')}"
+
+
+def _rank_key(video: dict) -> tuple:
+    published_at = _parse_dt(video.get("published_at"))
+    published_timestamp = published_at.timestamp() if published_at else float("-inf")
+    return (
+        -float(video.get("topic_score") or 0),
+        -published_timestamp,
+        -_stat(video, "view_count"),
+        int(video.get("_candidate_index") or 0),
+    )
+
+
+def _apply_channel_limit(
+    accepted: list[dict],
+    rejected: list[dict],
+    max_per_channel: int,
+) -> list[dict]:
+    selected: list[dict] = []
+    selected_by_channel: dict[str, list[dict]] = {}
+    for video in sorted(accepted, key=_rank_key):
+        channel_key = _channel_key(video)
+        channel_videos = selected_by_channel.setdefault(channel_key, [])
+        if len(channel_videos) < max_per_channel:
+            channel_videos.append(video)
+            selected.append(video)
+            continue
+        retained = channel_videos[0]
+        if max_per_channel == 1:
+            reason = (
+                "同频道仅保留得分最高的视频；"
+                f"已由 video_id={retained.get('video_id')} "
+                f"(topic_score={float(retained.get('topic_score') or 0):.4f}) 替代。"
+            )
+        else:
+            reason = (
+                f"同频道最多保留 {max_per_channel} 条高分视频；"
+                f"最高保留项为 video_id={retained.get('video_id')} "
+                f"(topic_score={float(retained.get('topic_score') or 0):.4f})。"
+            )
+        rejected.append({
+            "video_id": video.get("video_id"),
+            "title": video.get("title", ""),
+            "reason_code": "channel_limit_exceeded",
+            "reason": reason,
+        })
+    for video in selected:
+        video.pop("_candidate_index", None)
+    return selected
 
 
 def filter_and_rank(videos: list[dict], config: dict) -> dict:
@@ -212,7 +273,7 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
     rejected: list[dict] = []
     threshold_value = config.get("topic_score_threshold", 0.55)
     threshold = 0.55 if threshold_value is None else float(threshold_value)
-    for video in videos:
+    for candidate_index, video in enumerate(videos):
         flags = _quality_flags(video, config)
         reason = _hard_reject_reason(video, config, flags)
         if reason:
@@ -233,8 +294,22 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
         if score < threshold:
             rejected.append({"video_id": video.get("video_id"), "title": video.get("title", ""), "reason": f"topic_score {score} 低于阈值 {threshold}。"})
             continue
-        accepted.append(_accepted_video(video, matches, score, components, flags))
-    accepted.sort(key=lambda item: item["topic_score"], reverse=True)
+        accepted.append(
+            _accepted_video(
+                video,
+                matches,
+                score,
+                components,
+                flags,
+                candidate_index,
+            )
+        )
+    max_per_channel = max(1, int(config.get("max_videos_per_channel") or 1))
+    accepted = _apply_channel_limit(
+        accepted,
+        rejected,
+        max_per_channel,
+    )
     limit = int(config.get("max_results") or len(accepted) or 1)
     result = {
         "run_id": f"ytss_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}",

@@ -94,6 +94,7 @@ def build_json_report(output: dict, config: dict) -> dict:
                 "rank": index,
                 "video_id": video.get("video_id"),
                 "title": video.get("title", ""),
+                "reason_code": video.get("reason_code"),
                 "reason": video.get("reason", ""),
             }
             for index, video in enumerate(rejected, start=1)

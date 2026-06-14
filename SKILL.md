@@ -104,6 +104,8 @@ After a successful run, use one canonical presentation:
 - Use `search.list(type=video)` only for candidate recall.
 - Fetch tags, duration, statistics, and topic metadata with `videos.list`.
 - Keep `exclude_keywords` in local filtering; long negative API queries reduce recall.
+- Keep at most `max_videos_per_channel` ranked videos from one channel per
+  topic result; the default is one.
 - Prefer `channel_watch` for recurring known-channel monitoring.
 - Report API errors clearly; do not silently return partial results.
 - Preserve the runtime's structured JSON for downstream processing.
