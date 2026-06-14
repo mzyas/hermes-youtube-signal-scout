@@ -596,6 +596,31 @@ class FilterRankerTests(unittest.TestCase):
         )
         self.assertEqual(result["rejected"][0]["video_id"], "upsc-course")
 
+    def test_exam_abbreviations_require_word_boundaries(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+            blocked_exam_training_channel_names=[],
+        )
+        video = {
+            "video_id": "bias-course",
+            "title": "日銀 policy bias course analysis",
+            "description": "金融政策",
+            "tags": ["日銀"],
+            "channel_id": "analysis-channel",
+            "channel_title": "Economic Analysis",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(
+            [ranked["video_id"] for ranked in result["videos"]],
+            ["bias-course"],
+        )
+
     def test_rejects_explicit_exam_training_content(self):
         config = dict(self.config)
         config.update(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -104,11 +105,13 @@ def _is_exam_training(
         return True
     if match_keywords(text, EXAM_TRAINING_CONTENT_TERMS):
         return True
-    has_exam_abbreviation = bool(
-        match_keywords(f"{channel_title} {text}", EXAM_ABBREVIATIONS)
+    combined_text = f"{channel_title} {text}"
+    has_exam_abbreviation = any(
+        re.search(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])", combined_text)
+        for term in EXAM_ABBREVIATIONS
     )
     has_coaching_qualifier = bool(
-        match_keywords(f"{channel_title} {text}", EXAM_COACHING_QUALIFIERS)
+        match_keywords(combined_text, EXAM_COACHING_QUALIFIERS)
     )
     return has_exam_abbreviation and has_coaching_qualifier
 
