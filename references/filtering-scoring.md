@@ -5,13 +5,16 @@
 Candidates are rejected for missing IDs/snippets, blocklisted channels, invalid
 or out-of-window dates, future publication dates, low views, excessive duration,
 disabled Shorts, excluded keywords, suspected ads/promotions, and entertainment
-or low-information content.
+or low-information content. Exam-preparation and training channels are also
+rejected by default, including Academy/coaching brands, civil-service exam
+preparation, test-prep schools, and equivalent multilingual terms.
 
 Shorts detection uses duration plus `#shorts`. Configure the duration boundary
 with `shorts_max_duration_seconds`.
 
 Advertisement and entertainment rejection are enabled by default through
 `reject_possible_ads` and `reject_entertainment`.
+Exam-training rejection is controlled by `reject_exam_training`.
 
 ## Topic Match
 

@@ -31,6 +31,50 @@ ENTERTAINMENT_TERMS = [
     "お笑い",
     "バラエティ",
 ]
+EXAM_TRAINING_CHANNEL_TERMS = [
+    "academy",
+    "coaching",
+    "exam prep",
+    "test prep",
+    "公考",
+    "公务员考试",
+    "公務員試験",
+    "考公",
+    "考研",
+    "备考",
+    "備考",
+    "培训学校",
+    "培訓學校",
+    "培训机构",
+    "培訓機構",
+    "考试院",
+    "考試院",
+    "补习班",
+    "補習班",
+    "学習塾",
+    "予備校",
+    "수험",
+    "공무원 시험",
+]
+EXAM_TRAINING_CONTENT_TERMS = [
+    "公务员考试",
+    "公務員試験",
+    "考公",
+    "国考",
+    "省考",
+    "行测",
+    "申论",
+    "考研培训",
+    "考研课程",
+    "备考课程",
+    "考试培训",
+    "exam preparation course",
+    "competitive exam coaching",
+    "civil service exam",
+    "公務員試験対策",
+    "試験対策講座",
+    "공무원 시험 준비",
+]
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -59,14 +103,24 @@ def _is_short(video: dict, max_duration_seconds: int = 60) -> bool:
 
 
 def _quality_flags(video: dict, config: dict) -> dict[str, bool]:
-    text = f"{video.get('title', '')} {video.get('description', '')}".casefold()
+    text = " ".join([
+        str(video.get("title", "")),
+        str(video.get("description", "")),
+        " ".join(video.get("tags") or []),
+    ]).casefold()
+    channel_title = str(video.get("channel_title") or "").casefold()
     possible_ad = bool(match_keywords(text, LOW_QUALITY_TERMS))
     possible_entertainment = bool(match_keywords(text, ENTERTAINMENT_TERMS))
+    possible_exam_training = bool(
+        match_keywords(channel_title, EXAM_TRAINING_CHANNEL_TERMS)
+        or match_keywords(text, EXAM_TRAINING_CONTENT_TERMS)
+    )
     return {
         "is_short": _is_short(video, int(config.get("shorts_max_duration_seconds") or 60)),
         "possible_ad": possible_ad,
         "possible_entertainment": possible_entertainment,
-        "low_signal": possible_ad or possible_entertainment,
+        "possible_exam_training": possible_exam_training,
+        "low_signal": possible_ad or possible_entertainment or possible_exam_training,
     }
 
 
@@ -98,6 +152,8 @@ def _hard_reject_reason(video: dict, config: dict, flags: dict[str, bool]) -> st
         return "疑似广告或推广内容。"
     if config.get("reject_entertainment", False) and flags["possible_entertainment"]:
         return "疑似娱乐或低信息密度内容。"
+    if config.get("reject_exam_training", False) and flags["possible_exam_training"]:
+        return "疑似考试培训、考公备考或培训机构内容。"
     exclude_keywords = config.get("exclude_keywords") or []
     exclude_text = " ".join(
         [

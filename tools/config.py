@@ -141,6 +141,7 @@ def apply_defaults(config: dict) -> dict:
     merged.setdefault("shorts_max_duration_seconds", 60)
     merged.setdefault("reject_possible_ads", True)
     merged.setdefault("reject_entertainment", True)
+    merged.setdefault("reject_exam_training", True)
     merged.setdefault("trusted_channel_ids", [])
     lookback_days = merged.get("lookback_days")
     if not merged.get("published_after") and lookback_days:

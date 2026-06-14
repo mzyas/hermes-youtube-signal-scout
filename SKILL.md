@@ -106,6 +106,8 @@ After a successful run, use one canonical presentation:
 - Rank with the documented six-dimension model; use cached Data API snapshots
   for view growth and Bayesian smoothing for engagement.
 - Keep `exclude_keywords` in local filtering; long negative API queries reduce recall.
+- Exclude Academy, coaching, civil-service exam, and other test-preparation
+  channels when `reject_exam_training` is enabled.
 - Keep at most `max_videos_per_channel` ranked videos from one channel per
   topic result; the default is one.
 - Prefer `channel_watch` for recurring known-channel monitoring.
