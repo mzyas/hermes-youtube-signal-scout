@@ -440,6 +440,108 @@ class FilterRankerTests(unittest.TestCase):
         result = filter_and_rank([video], config)
         self.assertIn("娱乐", result["rejected"][0]["reason"])
 
+    def test_rejects_academy_and_exam_training_channels(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+        )
+        base = {
+            "title": "日銀 金融政策",
+            "description": "金融政策の解説",
+            "tags": ["日銀"],
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        videos = [
+            {
+                **base,
+                "video_id": "academy",
+                "channel_id": "academy-channel",
+                "channel_title": "Global Finance Academy",
+            },
+            {
+                **base,
+                "video_id": "civil-service",
+                "channel_id": "exam-channel",
+                "channel_title": "公考申论培训",
+            },
+            {
+                **base,
+                "video_id": "japanese-exam",
+                "channel_id": "jp-exam-channel",
+                "channel_title": "公務員試験対策予備校",
+            },
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(result["videos"], [])
+        self.assertEqual(len(result["rejected"]), 3)
+        self.assertTrue(all("考试培训" in item["reason"] for item in result["rejected"]))
+
+    def test_rejects_explicit_exam_training_content(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+        )
+        video = {
+            "video_id": "exam-course",
+            "title": "日銀ニュースと公务员考试备考课程",
+            "description": "金融政策",
+            "tags": ["日銀"],
+            "channel_id": "generic-channel",
+            "channel_title": "Daily Learning",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(result["videos"], [])
+        self.assertIn("考公备考", result["rejected"][0]["reason"])
+
+    def test_exam_training_filter_is_configurable(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=False,
+        )
+        video = {
+            "video_id": "academy-allowed",
+            "title": "日銀 金融政策",
+            "description": "金融政策",
+            "tags": ["日銀"],
+            "channel_id": "academy-channel",
+            "channel_title": "Macro Academy",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        self.assertEqual(len(filter_and_rank([video], config)["videos"]), 1)
+
+    def test_general_university_education_is_not_exam_training(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+        )
+        video = {
+            "video_id": "university",
+            "title": "日銀 金融政策 公開講座",
+            "description": "大学教授による日本経済の解説",
+            "tags": ["日銀", "日本経済"],
+            "channel_id": "university-channel",
+            "channel_title": "Tokyo University Economics",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        self.assertEqual(len(filter_and_rank([video], config)["videos"]), 1)
+
     def test_target_tags_only_matches_video_tags(self):
         config = dict(self.config)
         config["include_keywords"] = []

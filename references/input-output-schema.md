@@ -39,6 +39,7 @@ adaptive_max_search_pages: 1
 include_shorts: false
 reject_possible_ads: true
 reject_entertainment: true
+reject_exam_training: true
 output_dir: null
 cache_enabled: true
 ```

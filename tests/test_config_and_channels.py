@@ -24,6 +24,7 @@ class ConfigAndChannelTests(unittest.TestCase):
         self.assertEqual(config["include_keywords"], ["fallback topic"])
         self.assertTrue(config["reject_possible_ads"])
         self.assertTrue(config["reject_entertainment"])
+        self.assertTrue(config["reject_exam_training"])
         self.assertEqual(config["max_videos_per_channel"], 1)
         self.assertEqual(config["engagement_prior_views"], 1000)
         self.assertEqual(config["channel_quality_scores"], {})

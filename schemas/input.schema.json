@@ -70,6 +70,7 @@
     "score_match_cap": {"type": "integer", "minimum": 1, "default": 3},
     "reject_possible_ads": {"type": "boolean", "default": true},
     "reject_entertainment": {"type": "boolean", "default": true},
+    "reject_exam_training": {"type": "boolean", "default": true},
     "blocklisted_channel_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": []},
     "output_dir": {"type": ["string", "null"], "default": null},
     "cache_enabled": {"type": "boolean", "default": true},

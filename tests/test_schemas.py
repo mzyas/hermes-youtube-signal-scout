@@ -47,7 +47,7 @@ class SchemaTests(unittest.TestCase):
         ).validate({
             "run_id": "run",
             "skill": "hermes-youtube-signal-scout",
-            "version": "0.4.0",
+            "version": "0.4.1",
             "topic": "signal",
             "mode": "discovery",
             "created_at": "2026-06-10T00:00:00Z",
