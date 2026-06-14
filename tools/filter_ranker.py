@@ -92,6 +92,15 @@ EXAM_COACHING_QUALIFIERS = [
 ]
 
 
+def _has_token_phrase(text: str, term: str) -> bool:
+    return bool(
+        re.search(
+            rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])",
+            text,
+        )
+    )
+
+
 def _is_exam_training(
     video: dict,
     text: str,
@@ -107,11 +116,12 @@ def _is_exam_training(
         return True
     combined_text = f"{channel_title} {text}"
     has_exam_abbreviation = any(
-        re.search(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])", combined_text)
+        _has_token_phrase(combined_text, term)
         for term in EXAM_ABBREVIATIONS
     )
-    has_coaching_qualifier = bool(
-        match_keywords(combined_text, EXAM_COACHING_QUALIFIERS)
+    has_coaching_qualifier = any(
+        _has_token_phrase(combined_text, term)
+        for term in EXAM_COACHING_QUALIFIERS
     )
     return has_exam_abbreviation and has_coaching_qualifier
 

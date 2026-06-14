@@ -621,6 +621,31 @@ class FilterRankerTests(unittest.TestCase):
             ["bias-course"],
         )
 
+    def test_exam_coaching_qualifiers_require_word_boundaries(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+            blocked_exam_training_channel_names=[],
+        )
+        video = {
+            "video_id": "ias-mainstream",
+            "title": "日銀 IAS mainstream policy news",
+            "description": "金融政策",
+            "tags": ["日銀"],
+            "channel_id": "analysis-channel",
+            "channel_title": "India Policy News",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(
+            [ranked["video_id"] for ranked in result["videos"]],
+            ["ias-mainstream"],
+        )
+
     def test_rejects_explicit_exam_training_content(self):
         config = dict(self.config)
         config.update(
