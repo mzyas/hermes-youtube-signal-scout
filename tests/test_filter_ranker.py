@@ -446,6 +446,7 @@ class FilterRankerTests(unittest.TestCase):
             topic_score_threshold=0,
             min_views=0,
             reject_exam_training=True,
+            blocked_exam_training_channel_names=["Vajiram and Ravi"],
         )
         base = {
             "title": "日銀 金融政策",
@@ -486,11 +487,12 @@ class FilterRankerTests(unittest.TestCase):
             topic_score_threshold=0,
             min_views=0,
             reject_exam_training=True,
+            blocked_exam_training_channel_names=["Vajiram and Ravi"],
         )
         video = {
             "video_id": "vajiram-ravi",
-            "title": "Current Affairs Analysis for UPSC preparation",
-            "description": "Daily current affairs course",
+            "title": "Current Affairs Analysis",
+            "description": "Daily current affairs",
             "tags": ["UPSC"],
             "channel_id": "vajiram-ravi-channel",
             "channel_title": "Vajiram and Ravi Official",
@@ -502,7 +504,38 @@ class FilterRankerTests(unittest.TestCase):
         self.assertEqual(result["videos"], [])
         self.assertIn("考试培训", result["rejected"][0]["reason"])
 
-    def test_vajiram_name_alone_does_not_trigger_brand_blocklist(self):
+    def test_known_exam_training_names_match_across_markets(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+            blocked_exam_training_channel_names=[
+                "Drishti IAS",
+                "資格の学校TAC",
+                "공단기",
+                "中公教育",
+            ],
+        )
+        base = {
+            "title": "日銀 金融政策 Current Affairs",
+            "description": "ニュース分析",
+            "tags": ["日銀"],
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        videos = [
+            {**base, "video_id": "india", "channel_id": "1", "channel_title": "Drishti IAS"},
+            {**base, "video_id": "japan", "channel_id": "2", "channel_title": "資格の学校TAC 公式"},
+            {**base, "video_id": "korea", "channel_id": "3", "channel_title": "공단기 공식"},
+            {**base, "video_id": "china", "channel_id": "4", "channel_title": "中公教育官方"},
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(result["videos"], [])
+        self.assertEqual(len(result["rejected"]), 4)
+
+    def test_unknown_institution_name_alone_does_not_trigger_brand_blocklist(self):
         config = dict(self.config)
         config.update(
             topic_score_threshold=0,
@@ -510,12 +543,12 @@ class FilterRankerTests(unittest.TestCase):
             reject_exam_training=True,
         )
         video = {
-            "video_id": "vajiram-name-only",
+            "video_id": "unknown-name-only",
             "title": "日銀 金融政策 Current Affairs",
             "description": "日本経済のニュース分析",
             "tags": ["日銀"],
-            "channel_id": "vajiram-ravi-channel",
-            "channel_title": "Vajiram and Ravi Official",
+            "channel_id": "unknown-learning-channel",
+            "channel_title": "Ravi Current Affairs Official",
             "published_at": "2026-06-08T10:00:00Z",
             "duration_seconds": 900,
             "statistics": {"view_count": 2000},
@@ -523,7 +556,7 @@ class FilterRankerTests(unittest.TestCase):
         result = filter_and_rank([video], config)
         self.assertEqual(
             [ranked["video_id"] for ranked in result["videos"]],
-            ["vajiram-name-only"],
+            ["unknown-name-only"],
         )
 
     def test_rejects_upsc_coaching_combination_but_not_upsc_news(self):

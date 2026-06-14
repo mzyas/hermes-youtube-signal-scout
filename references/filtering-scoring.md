@@ -9,9 +9,12 @@ or low-information content. Exam-preparation and training channels are also
 rejected by default, including Academy/coaching brands, civil-service exam
 preparation, test-prep schools, and equivalent multilingual terms.
 
-Known institution names are not maintained as a brand blocklist. Ambiguous
-exam abbreviations such as `UPSC`, `IAS`, and `CSE` trigger rejection only when
-combined with training intent such as `preparation`, `course`, `coaching`,
+Known institutions in `blocked_exam_training_channel_names` are rejected by
+normalized channel-name substring matching. The default list includes
+major UPSC, civil-service, and qualification-exam training brands from India,
+Japan, Korea, and Chinese-language markets. For channels outside the list,
+ambiguous abbreviations such as `UPSC`, `IAS`, and `CSE` trigger rejection only
+when combined with training intent such as `preparation`, `course`, `coaching`,
 `batch`, `classes`, or `test series`. This keeps ordinary exam-related news and
 policy reporting eligible.
 

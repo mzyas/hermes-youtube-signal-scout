@@ -112,6 +112,14 @@ def _manual_validate(config: dict) -> None:
         raise ConfigurationError(
             "channel_quality_scores values must be numbers between 0 and 1"
         )
+    blocked_training_names = config.get("blocked_exam_training_channel_names") or []
+    if not isinstance(blocked_training_names, list) or any(
+        not isinstance(name, str) or not name.strip()
+        for name in blocked_training_names
+    ):
+        raise ConfigurationError(
+            "blocked_exam_training_channel_names must be a string array"
+        )
 
 
 def validate_config(config: dict) -> None:
@@ -142,6 +150,40 @@ def apply_defaults(config: dict) -> dict:
     merged.setdefault("reject_possible_ads", True)
     merged.setdefault("reject_entertainment", True)
     merged.setdefault("reject_exam_training", True)
+    merged.setdefault("blocked_exam_training_channel_names", [
+        "Vajiram and Ravi",
+        "Drishti IAS",
+        "Vision IAS",
+        "StudyIQ IAS",
+        "PW OnlyIAS",
+        "NEXT IAS",
+        "InsightsIAS",
+        "ForumIAS",
+        "Shankar IAS Academy",
+        "Rau's IAS Study Circle",
+        "Unacademy UPSC",
+        "BYJU'S IAS",
+        "Adda247",
+        "Testbook",
+        "資格の学校TAC",
+        "LEC東京リーガルマインド",
+        "アガルート",
+        "クレアール",
+        "公務員試験予備校EYE",
+        "スタディング",
+        "공단기",
+        "메가공무원",
+        "해커스공무원",
+        "에듀윌 공무원",
+        "박문각 공무원",
+        "中公教育",
+        "华图教育",
+        "華圖教育",
+        "粉笔公考",
+        "粉筆公考",
+        "粉笔教育",
+        "粉筆教育",
+    ])
     merged.setdefault("trusted_channel_ids", [])
     lookback_days = merged.get("lookback_days")
     if not merged.get("published_after") and lookback_days:

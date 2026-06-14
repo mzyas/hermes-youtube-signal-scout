@@ -91,7 +91,15 @@ EXAM_COACHING_QUALIFIERS = [
 ]
 
 
-def _is_exam_training(video: dict, text: str, channel_title: str) -> bool:
+def _is_exam_training(
+    video: dict,
+    text: str,
+    channel_title: str,
+    config: dict,
+) -> bool:
+    known_institutions = config.get("blocked_exam_training_channel_names") or []
+    if match_keywords(channel_title, known_institutions):
+        return True
     if match_keywords(channel_title, EXAM_TRAINING_CHANNEL_TERMS):
         return True
     if match_keywords(text, EXAM_TRAINING_CONTENT_TERMS):
@@ -139,7 +147,7 @@ def _quality_flags(video: dict, config: dict) -> dict[str, bool]:
     channel_title = str(video.get("channel_title") or "").casefold()
     possible_ad = bool(match_keywords(text, LOW_QUALITY_TERMS))
     possible_entertainment = bool(match_keywords(text, ENTERTAINMENT_TERMS))
-    possible_exam_training = _is_exam_training(video, text, channel_title)
+    possible_exam_training = _is_exam_training(video, text, channel_title, config)
     return {
         "is_short": _is_short(video, int(config.get("shorts_max_duration_seconds") or 60)),
         "possible_ad": possible_ad,
