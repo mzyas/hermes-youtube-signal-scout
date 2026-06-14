@@ -9,6 +9,12 @@ or low-information content. Exam-preparation and training channels are also
 rejected by default, including Academy/coaching brands, civil-service exam
 preparation, test-prep schools, and equivalent multilingual terms.
 
+Known institution names are not maintained as a brand blocklist. Ambiguous
+exam abbreviations such as `UPSC`, `IAS`, and `CSE` trigger rejection only when
+combined with training intent such as `preparation`, `course`, `coaching`,
+`batch`, `classes`, or `test series`. This keeps ordinary exam-related news and
+policy reporting eligible.
+
 Shorts detection uses duration plus `#shorts`. Configure the duration boundary
 with `shorts_max_duration_seconds`.
 

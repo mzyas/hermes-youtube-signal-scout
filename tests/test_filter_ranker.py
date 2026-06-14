@@ -480,6 +480,89 @@ class FilterRankerTests(unittest.TestCase):
         self.assertEqual(len(result["rejected"]), 3)
         self.assertTrue(all("考试培训" in item["reason"] for item in result["rejected"]))
 
+    def test_rejects_vajiram_and_ravi_official_channel(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+        )
+        video = {
+            "video_id": "vajiram-ravi",
+            "title": "Current Affairs Analysis for UPSC preparation",
+            "description": "Daily current affairs course",
+            "tags": ["UPSC"],
+            "channel_id": "vajiram-ravi-channel",
+            "channel_title": "Vajiram and Ravi Official",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(result["videos"], [])
+        self.assertIn("考试培训", result["rejected"][0]["reason"])
+
+    def test_vajiram_name_alone_does_not_trigger_brand_blocklist(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+        )
+        video = {
+            "video_id": "vajiram-name-only",
+            "title": "日銀 金融政策 Current Affairs",
+            "description": "日本経済のニュース分析",
+            "tags": ["日銀"],
+            "channel_id": "vajiram-ravi-channel",
+            "channel_title": "Vajiram and Ravi Official",
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        result = filter_and_rank([video], config)
+        self.assertEqual(
+            [ranked["video_id"] for ranked in result["videos"]],
+            ["vajiram-name-only"],
+        )
+
+    def test_rejects_upsc_coaching_combination_but_not_upsc_news(self):
+        config = dict(self.config)
+        config.update(
+            topic_score_threshold=0,
+            min_views=0,
+            reject_exam_training=True,
+        )
+        common = {
+            "description": "日銀 金融政策",
+            "tags": ["日銀"],
+            "published_at": "2026-06-08T10:00:00Z",
+            "duration_seconds": 900,
+            "statistics": {"view_count": 2000},
+        }
+        videos = [
+            {
+                **common,
+                "video_id": "upsc-course",
+                "title": "日銀と経済 UPSC preparation course",
+                "channel_id": "course-channel",
+                "channel_title": "Current Affairs Learning",
+            },
+            {
+                **common,
+                "video_id": "upsc-news",
+                "title": "日銀と経済 UPSC policy news",
+                "channel_id": "news-channel",
+                "channel_title": "India Policy News",
+            },
+        ]
+        result = filter_and_rank(videos, config)
+        self.assertEqual(
+            [video["video_id"] for video in result["videos"]],
+            ["upsc-news"],
+        )
+        self.assertEqual(result["rejected"][0]["video_id"], "upsc-course")
+
     def test_rejects_explicit_exam_training_content(self):
         config = dict(self.config)
         config.update(
