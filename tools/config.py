@@ -94,6 +94,24 @@ def _manual_validate(config: dict) -> None:
         or max_per_channel < 1
     ):
         raise ConfigurationError("max_videos_per_channel must be a positive integer")
+    prior_views = config.get("engagement_prior_views")
+    if (
+        not isinstance(prior_views, int)
+        or isinstance(prior_views, bool)
+        or prior_views < 1
+    ):
+        raise ConfigurationError("engagement_prior_views must be a positive integer")
+    channel_scores = config.get("channel_quality_scores") or {}
+    if not isinstance(channel_scores, dict) or any(
+        not isinstance(score, (int, float))
+        or isinstance(score, bool)
+        or score < 0
+        or score > 1
+        for score in channel_scores.values()
+    ):
+        raise ConfigurationError(
+            "channel_quality_scores values must be numbers between 0 and 1"
+        )
 
 
 def validate_config(config: dict) -> None:

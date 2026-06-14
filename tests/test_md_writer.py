@@ -35,6 +35,8 @@ class MarkdownWriterTests(unittest.TestCase):
                     "duration_seconds": 125,
                     "statistics": {"view_count": 12345},
                     "topic_score": 0.491,
+                    "score_components": {"topic_relevance": 0.2},
+                    "ranking_signals": {"view_velocity_per_hour": 100.0},
                 }
             ],
             "rejected": [
@@ -62,7 +64,7 @@ class MarkdownWriterTests(unittest.TestCase):
             self.assertIn("| 2026-06-09 | 02:05 | 12,345 |", markdown)
             self.assertIn("命中排除词：sponsored。", markdown)
             self.assertIn("101 units (search×1, videos×1)", markdown)
-            self.assertIn("hermes-youtube-signal-scout v0.3.1", markdown)
+            self.assertIn("hermes-youtube-signal-scout v0.4.0", markdown)
             self.assertEqual(json.loads(json_path.read_text(encoding="utf-8")), self.output)
             self.assertEqual(self.output["output_files"]["markdown"], str(markdown_path))
             self.assertEqual(self.output["output_files"]["json"], str(json_path))
@@ -93,6 +95,8 @@ class MarkdownWriterTests(unittest.TestCase):
                 "published_at",
                 "duration_seconds",
                 "view_count",
+                "score_components",
+                "ranking_signals",
             },
         )
         self.assertEqual(video["rank"], 1)

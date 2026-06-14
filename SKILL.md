@@ -103,6 +103,8 @@ After a successful run, use one canonical presentation:
 
 - Use `search.list(type=video)` only for candidate recall.
 - Fetch tags, duration, statistics, and topic metadata with `videos.list`.
+- Rank with the documented six-dimension model; use cached Data API snapshots
+  for view growth and Bayesian smoothing for engagement.
 - Keep `exclude_keywords` in local filtering; long negative API queries reduce recall.
 - Keep at most `max_videos_per_channel` ranked videos from one channel per
   topic result; the default is one.

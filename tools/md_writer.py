@@ -86,6 +86,8 @@ def build_json_report(output: dict, config: dict) -> dict:
                 "published_at": video.get("published_at", ""),
                 "duration_seconds": int(video.get("duration_seconds") or 0),
                 "view_count": _views(video),
+                "score_components": video.get("score_components") or {},
+                "ranking_signals": video.get("ranking_signals") or {},
             }
             for index, video in enumerate(videos, start=1)
         ],

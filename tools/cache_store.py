@@ -51,6 +51,16 @@ CREATE TABLE IF NOT EXISTS video_scores (
   matched_fields_json TEXT,
   scored_at TEXT
 );
+CREATE TABLE IF NOT EXISTS video_stat_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  video_id TEXT NOT NULL,
+  view_count INTEGER NOT NULL,
+  like_count INTEGER NOT NULL,
+  comment_count INTEGER NOT NULL,
+  captured_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_video_stat_snapshots_video_time
+ON video_stat_snapshots(video_id, captured_at DESC);
 CREATE TABLE IF NOT EXISTS quota_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   method TEXT,
@@ -121,6 +131,7 @@ def get_cached_video(conn, video_id: str, ttl_hours: int) -> dict | None:
 
 def save_video(conn, video: dict) -> None:
     stats = video.get("statistics") or {}
+    captured_at = _now()
     conn.execute(
         """
         INSERT OR REPLACE INTO videos
@@ -133,10 +144,61 @@ def save_video(conn, video: dict) -> None:
             video.get("published_at"), video.get("description"), json.dumps(video.get("tags") or [], ensure_ascii=False),
             video.get("category_id"), video.get("duration_seconds"), stats.get("view_count", 0),
             stats.get("like_count", 0), stats.get("comment_count", 0),
-            json.dumps(video, ensure_ascii=False), _now(),
+            json.dumps(video, ensure_ascii=False), captured_at,
         ),
     )
+    conn.execute(
+        """
+        INSERT INTO video_stat_snapshots
+        (video_id, view_count, like_count, comment_count, captured_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            video.get("video_id"),
+            int(stats.get("view_count") or 0),
+            int(stats.get("like_count") or 0),
+            int(stats.get("comment_count") or 0),
+            captured_at,
+        ),
+    )
+    conn.execute(
+        """
+        DELETE FROM video_stat_snapshots
+        WHERE video_id = ?
+          AND id NOT IN (
+            SELECT id
+            FROM video_stat_snapshots
+            WHERE video_id = ?
+            ORDER BY captured_at DESC
+            LIMIT 20
+          )
+        """,
+        (video.get("video_id"), video.get("video_id")),
+    )
     conn.commit()
+
+
+def get_previous_statistics(conn, video_id: str) -> dict | None:
+    row = conn.execute(
+        """
+        SELECT view_count, like_count, comment_count, captured_at
+        FROM video_stat_snapshots
+        WHERE video_id = ?
+        ORDER BY captured_at DESC
+        LIMIT 1
+        """,
+        (video_id,),
+    ).fetchone()
+    if not row:
+        row = conn.execute(
+            """
+            SELECT view_count, like_count, comment_count, last_fetched_at AS captured_at
+            FROM videos
+            WHERE video_id = ?
+            """,
+            (video_id,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def log_quota(conn, method: str, estimated_cost: int, endpoint: str, run_id: str | None = None) -> None:
