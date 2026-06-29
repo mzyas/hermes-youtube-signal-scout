@@ -20,6 +20,8 @@ topics:
       - data center
 
 email:
+  account: gmail
+  sender: signals@example.com
   recipients:
     - analyst@example.com
   subject: YouTube 每周信号报告

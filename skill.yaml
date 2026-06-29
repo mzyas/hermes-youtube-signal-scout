@@ -1,5 +1,5 @@
 name: hermes-youtube-signal-scout
-version: 0.4.4
+version: 0.5.0
 description: >
   Discover, hydrate, filter, and rank YouTube videos for a topic, keyword group,
   tag set, channel pool, and time window using YouTube Data API v3.

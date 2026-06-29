@@ -120,12 +120,13 @@ python -m tools.weekly_runner --config examples/weekly.yaml
 ```
 
 The weekly config accepts shared `defaults`, a non-empty `topics` array,
-descriptive `schedule` metadata, and optional email recipients. Its result
-contains all per-topic runs plus `email_handoff` for agent-side HTML rendering
-and delivery. See `schemas/weekly-input.schema.json`,
+descriptive `schedule` metadata, and a required email object with Himalaya
+`account`, `sender`, and non-empty `recipients`. Its result contains all
+per-topic runs plus a complete `email_handoff.mml_template` for delivery through
+`himalaya --account <account> template send`. See `schemas/weekly-input.schema.json`,
 `schemas/weekly-result.schema.json`, and `references/weekly-automation.md`.
 The normal `tools.runner.run()` result never contains an email action and must
-not trigger HTML rendering or delivery.
+not trigger MML generation or delivery.
 
 ## Output
 

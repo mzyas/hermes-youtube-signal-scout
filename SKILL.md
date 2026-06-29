@@ -48,17 +48,19 @@ The stable weekly Python interface is
 
 The external scheduler invokes the weekly interface, for example every Monday
 morning. The Skill performs search and report assembly but does not schedule
-itself or send email directly. It returns a pre-rendered
-`email_handoff.html_body`; send it with the declared
-`email_handoff.content_type` (`text/html; charset=utf-8`) through the available
-email tool to `recipients`. Use the tool's explicit HTML-body or content-type
-option. Never put `html_body` into a plain-text or Markdown body field; if the
-tool cannot send HTML, report delivery as unsupported instead of sending the
-HTML source as visible text.
+itself or send email directly. It returns a complete Himalaya MML message in
+`email_handoff.mml_template`. Pass that value unchanged on standard input to
+`himalaya --account <account> template send`, replacing `<account>` with
+`email_handoff.account`. Do not render, escape, or wrap the MML again.
 
-Only perform HTML rendering and email delivery after an explicit
+The handoff retry policy is `never_automatic`. If Himalaya exits non-zero,
+report delivery as indeterminate and do not retry without explicit user
+approval after checking the Sent mailbox. SMTP submission may have succeeded
+before saving the Sent copy failed.
+
+Only perform MML generation and email delivery after an explicit
 `run_weekly()`/weekly CLI invocation. A normal `run()` result must never trigger
-HTML rendering or email delivery.
+MML generation or email delivery.
 
 See `references/weekly-automation.md` for the handoff contract.
 
