@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Hermes YouTube Signal Scout Weekly Input",
   "type": "object",
-  "required": ["topics"],
+  "required": ["topics", "email"],
   "additionalProperties": false,
   "properties": {
     "schedule": {
@@ -31,16 +31,33 @@
     },
     "email": {
       "type": "object",
+      "required": ["account", "sender", "recipients"],
       "additionalProperties": false,
       "properties": {
-        "account": {"type": "string", "minLength": 1},
-        "sender": {"type": "string", "format": "email"},
+        "account": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "sender": {
+          "type": "string",
+          "format": "email",
+          "pattern": "^[^\\r\\n]+$"
+        },
         "recipients": {
           "type": "array",
-          "items": {"type": "string", "format": "email"},
-          "default": []
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^[^\\r\\n]+$"
+          }
         },
-        "subject": {"type": "string", "minLength": 1}
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\r\\n]+$"
+        }
       }
     },
     "continue_on_error": {"type": "boolean", "default": true}

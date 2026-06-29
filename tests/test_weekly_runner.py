@@ -111,7 +111,17 @@ class WeeklyRunnerTests(unittest.TestCase):
 
     def test_requires_non_empty_topics(self):
         with self.assertRaisesRegex(ConfigurationError, "topics"):
-            run_weekly({"topics": []}, client=FakeYouTubeClient())
+            run_weekly(
+                {
+                    "topics": [],
+                    "email": {
+                        "account": "gmail",
+                        "sender": "signals@example.com",
+                        "recipients": ["analyst@example.com"],
+                    },
+                },
+                client=FakeYouTubeClient(),
+            )
 
     def test_requires_himalaya_account_sender_and_recipient(self):
         cases = [

@@ -99,8 +99,93 @@ class SchemaTests(unittest.TestCase):
             format_checker=jsonschema.FormatChecker(),
         ).validate({
             "topics": ["global economy", {"topic": "AI chips"}],
-            "email": {"recipients": ["analyst@example.com"]},
+            "email": {
+                "account": "gmail",
+                "sender": "signals@example.com",
+                "recipients": ["analyst@example.com"],
+            },
         })
+
+    def test_weekly_input_requires_delivery_identity(self):
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema dependency is not installed")
+
+        schema = json.loads(
+            (SCHEMAS / "weekly-input.schema.json").read_text(encoding="utf-8")
+        )
+        validator = jsonschema.Draft202012Validator(
+            schema,
+            format_checker=jsonschema.FormatChecker(),
+        )
+        cases = [
+            {"topics": ["signal"]},
+            {
+                "topics": ["signal"],
+                "email": {
+                    "sender": "signals@example.com",
+                    "recipients": ["a@example.com"],
+                },
+            },
+            {
+                "topics": ["signal"],
+                "email": {
+                    "account": "gmail",
+                    "recipients": ["a@example.com"],
+                },
+            },
+            {
+                "topics": ["signal"],
+                "email": {
+                    "account": "gmail",
+                    "sender": "signals@example.com",
+                    "recipients": [],
+                },
+            },
+        ]
+        for instance in cases:
+            with self.subTest(instance=instance):
+                self.assertTrue(list(validator.iter_errors(instance)))
+
+    def test_weekly_result_accepts_only_himalaya_handoff(self):
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema dependency is not installed")
+
+        schema = json.loads(
+            (SCHEMAS / "weekly-result.schema.json").read_text(encoding="utf-8")
+        )
+        validator = jsonschema.Draft202012Validator(
+            schema,
+            format_checker=jsonschema.FormatChecker(),
+        )
+        result = {
+            "generated_at": "2026-06-29T00:00:00Z",
+            "schedule": {"cron": "0 9 * * 1", "timezone": "Asia/Tokyo"},
+            "status": "success",
+            "topic_count": 1,
+            "successful_topic_count": 1,
+            "failed_topic_count": 0,
+            "runs": [],
+            "failures": [],
+            "email_handoff": {
+                "action": "send_himalaya_template",
+                "account": "gmail",
+                "sender": "signals@example.com",
+                "recipients": ["analyst@example.com"],
+                "subject": "Weekly Signals",
+                "mml_template": (
+                    "From: signals@example.com\n\n"
+                    "<#part type=text/html>\n<html></html>\n<#/part>\n"
+                ),
+                "retry_policy": "never_automatic",
+            },
+        }
+        validator.validate(result)
+        result["email_handoff"]["html_body"] = "<html></html>"
+        self.assertTrue(list(validator.iter_errors(result)))
 
 
 if __name__ == "__main__":
