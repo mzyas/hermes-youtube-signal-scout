@@ -135,6 +135,7 @@ def run_weekly(config: dict, client=None) -> dict:
                 "Use semantic HTML with a heading and one section per topic.",
                 "Preserve every video title, URL, channel, publication time, duration, views, score, and summary.",
                 "Do not invent missing fields or silently omit failed topics.",
+                "Apply style='max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' to every result-row channel cell as a defense-in-depth guard against unusually long or unsanitized channel_title values; channel_title is sanitized at the hydration boundary but the renderer must still prevent layout breakage.",
             ],
         },
     }

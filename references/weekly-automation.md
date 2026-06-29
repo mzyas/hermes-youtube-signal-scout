@@ -27,6 +27,11 @@ When `email_handoff.action` is `render_html_and_send_email`:
 3. Send to `email_handoff.recipients` with `email_handoff.subject`.
 4. Include failed topics in the email instead of hiding them.
 5. Treat email delivery status separately from the search `status`.
+6. Apply `style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"`
+   to the channel cell of every result row as a visual safety net against
+   unusually long or unsanitized `channel_title` values. The Skill sanitizes
+   `channel_title` at the hydration boundary, but the renderer must still
+   guard against long content breaking the table layout.
 
 This handoff applies only to the weekly interface. Never infer an email action
 from `report_markdown` or `report_json` returned by the normal single-run

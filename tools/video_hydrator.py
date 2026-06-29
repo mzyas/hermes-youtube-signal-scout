@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .duration import parse_youtube_duration
+from .text_sanitize import sanitize_channel_title
 
 
 def chunks(values: list[str], size: int = 50):
@@ -11,6 +12,14 @@ def chunks(values: list[str], size: int = 50):
 
 
 def parse_video_resource(item: dict) -> dict:
+    """Build a normalized video dict from a YouTube ``videos.list`` resource.
+
+    ``channel_title`` is sanitized via :func:`sanitize_channel_title` to defend
+    against polluted ``snippet.channelTitle`` values leaking into Markdown /
+    HTML output. ``raw_json`` keeps the original resource untouched for
+    debugging/audit; downstream code must read the cleaned ``channel_title``
+    field and must not rely on ``raw_json.snippet.channelTitle``.
+    """
     snippet = item.get("snippet") or {}
     content = item.get("contentDetails") or {}
     statistics = item.get("statistics") or {}
@@ -21,7 +30,7 @@ def parse_video_resource(item: dict) -> dict:
         "url": f"https://www.youtube.com/watch?v={video_id}" if video_id else "",
         "title": snippet.get("title", ""),
         "channel_id": snippet.get("channelId", ""),
-        "channel_title": snippet.get("channelTitle", ""),
+        "channel_title": sanitize_channel_title(snippet.get("channelTitle", "")),
         "published_at": snippet.get("publishedAt", ""),
         "description": snippet.get("description", ""),
         "tags": snippet.get("tags", []),
