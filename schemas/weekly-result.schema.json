@@ -41,14 +41,13 @@
     },
     "email_handoff": {
       "type": "object",
-      "required": ["action", "recipients", "subject", "markdown_body", "sections", "html_requirements"],
+      "required": ["action", "recipients", "subject", "html_body", "sections"],
       "properties": {
-        "action": {"const": "render_html_and_send_email"},
+        "action": {"const": "send_email"},
         "recipients": {"type": "array", "items": {"type": "string"}},
         "subject": {"type": "string"},
-        "markdown_body": {"type": "string"},
-        "sections": {"type": "array", "items": {"type": "object"}},
-        "html_requirements": {"type": "array", "items": {"type": "string"}}
+        "html_body": {"type": "string"},
+        "sections": {"type": "array", "items": {"type": "object"}}
       }
     }
   }

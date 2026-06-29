@@ -1,6 +1,10 @@
 import unittest
 
-from tools.text_sanitize import sanitize_channel_title, sanitize_channel_title_for_email
+from tools.text_sanitize import (
+    sanitize_channel_title,
+    sanitize_channel_title_for_email,
+    sanitize_title_for_email,
+)
 from tools.video_hydrator import hydrate_videos, parse_video_resource
 
 
@@ -74,10 +78,10 @@ class SanitizeChannelTitleForEmailTests(unittest.TestCase):
             "SurTaal Studios",
         )
 
-    def test_default_max_len_is_40(self):
+    def test_default_max_len_is_60(self):
         long = "A" * 200
         result = sanitize_channel_title_for_email(long)
-        self.assertEqual(len(result), 40)
+        self.assertEqual(len(result), 60)
 
     def test_custom_max_len(self):
         long = "A" * 100
@@ -102,6 +106,38 @@ class SanitizeChannelTitleForEmailTests(unittest.TestCase):
     def test_empty_and_none(self):
         self.assertEqual(sanitize_channel_title_for_email(""), "")
         self.assertEqual(sanitize_channel_title_for_email(None), "")
+
+
+class SanitizeTitleForEmailTests(unittest.TestCase):
+    def test_short_value_unchanged(self):
+        self.assertEqual(sanitize_title_for_email("signal update"), "signal update")
+
+    def test_default_max_len_is_80(self):
+        long = "A" * 500
+        result = sanitize_title_for_email(long)
+        self.assertEqual(len(result), 80)
+
+    def test_custom_max_len(self):
+        result = sanitize_title_for_email("A" * 200, max_len=50)
+        self.assertEqual(len(result), 50)
+
+    def test_strips_html_tags(self):
+        result = sanitize_title_for_email("<script>alert(1)</script>title")
+        self.assertNotIn("<", result)
+        self.assertNotIn(">", result)
+        self.assertIn("title", result)
+
+    def test_strips_pollution_delimiters(self):
+        result = sanitize_title_for_email(
+            "Real Title \u2022 1.2M views \u2022 5 hours ago"
+        )
+        self.assertNotIn("\u2022", result)
+        self.assertIn("Real", result)
+        self.assertIn("Title", result)
+
+    def test_empty_and_none(self):
+        self.assertEqual(sanitize_title_for_email(""), "")
+        self.assertEqual(sanitize_title_for_email(None), "")
 
 
 def _resource(video_id: str, channel_title: str) -> dict:

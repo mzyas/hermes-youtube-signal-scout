@@ -64,28 +64,10 @@ def _topic_configs(config: dict) -> list[dict]:
     return normalized
 
 
-def _build_email_markdown(subject: str, runs: list[dict], failures: list[dict]) -> str:
-    from copy import deepcopy
+def _build_email_html(subject: str, runs: list[dict], failures: list[dict], generated_at: str) -> str:
+    from .email_renderer import render_email_html
 
-    from .md_writer import render_markdown_report
-    from .text_sanitize import sanitize_channel_title_for_email
-
-    sections = [f"# {subject}"]
-    for result in runs:
-        topic_config = result.get("_email_topic_config") or {}
-        email_output = deepcopy(result)
-        for video in email_output.get("videos") or []:
-            video["channel_title"] = sanitize_channel_title_for_email(
-                video.get("channel_title", "")
-            )
-        sections.append(render_markdown_report(email_output, topic_config))
-    if failures:
-        sections.append("## Failed Topics")
-        sections.extend(
-            f"- **{failure['topic']}**: {failure['error']['message']}"
-            for failure in failures
-        )
-    return "\n\n".join(sections)
+    return render_email_html(subject, runs, failures, generated_at)
 
 
 def run_weekly(config: dict, client=None) -> dict:
@@ -140,23 +122,11 @@ def run_weekly(config: dict, client=None) -> dict:
         "runs": runs,
         "failures": failures,
         "email_handoff": {
-            "action": "render_html_and_send_email",
+            "action": "send_email",
             "recipients": recipients,
             "subject": subject,
-            "markdown_body": _build_email_markdown(subject, runs, failures),
+            "html_body": _build_email_html(subject, runs, failures, generated_at),
             "sections": sections,
-            "html_requirements": [
-                "Use semantic HTML with a heading and one section per topic.",
-                "Preserve every video title, URL, channel, publication time, duration, views, score, and summary.",
-                "Do not invent missing fields or silently omit failed topics.",
-                "Apply style='max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' to every result-row channel cell as a defense-in-depth guard against unusually long or unsanitized channel_title values; channel_title is sanitized at the hydration boundary but the renderer must still prevent layout breakage.",
-                "Use <table> for all layout (no flexbox, no grid, no <div>-based positioning); table, tr, td, th are the only reliable primitives across email clients.",
-                "Inline every style on the target element; do not rely on <style> blocks, <link>, or class selectors because Gmail strips <head><style> and Outlook ignores <style> inconsistently.",
-                "Use a fixed table-layout with explicit width attributes on <table>, <td>, and <th>; do not depend on min-width or max-width to constrain columns because Outlook (Word engine) does not honor them.",
-                "Gmail compatibility: avoid background-image, avoid <script>, avoid CSS variables, avoid @media queries, and do not use shorthand properties; set width, height, color, background-color, padding, margin, font-family, font-size, line-height as individual inline declarations.",
-                "Outlook (desktop, Word engine) compatibility: wrap Outlook-only markup in <!--[if mso]>...<![endif]--> conditional comments; provide mso-padding-alt and mso-line-height-rule for cells that need exact text spacing; the text-overflow:ellipsis channel cell needs an Outlook-specific character cap (e.g., truncate channel_title to 40 characters before render) because Word ignores ellipsis entirely.",
-                "Always set width and height on <img>; always use absolute URLs; always set alt text; never use CSS background-image for content images.",
-            ],
         },
     }
 
