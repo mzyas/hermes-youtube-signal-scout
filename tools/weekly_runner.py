@@ -102,6 +102,7 @@ def run_weekly(config: dict, client=None) -> dict:
             if not continue_on_error:
                 raise
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    formatted_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     subject = str(email.get("subject") or f"YouTube Weekly Signal Report - {generated_at[:10]}")
     sections = [
         {
@@ -125,7 +126,7 @@ def run_weekly(config: dict, client=None) -> dict:
             "action": "send_email",
             "recipients": recipients,
             "subject": subject,
-            "html_body": _build_email_html(subject, runs, failures, generated_at),
+            "html_body": _build_email_html(subject, sections, failures, formatted_at),
             "sections": sections,
         },
     }

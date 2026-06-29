@@ -12,6 +12,7 @@ def _video(
     published_at="2026-06-10T00:00:00Z",
     duration_seconds=125,
     view_count=12345,
+    statistics=None,
 ):
     return {
         "rank": rank,
@@ -22,6 +23,7 @@ def _video(
         "topic_score": topic_score,
         "duration_seconds": duration_seconds,
         "view_count": view_count,
+        "statistics": statistics or {},
     }
 
 
@@ -110,12 +112,74 @@ class EmailRendererTests(unittest.TestCase):
             {"topic": "topic A", "videos": [_video(rank=1, title="video A")]},
             {"topic": "topic B", "videos": [_video(rank=1, title="video B")]},
         ]
-        html_out = render_email_html("s", runs, [], "2026-06-29T09:30:00Z")
+        html_out = render_email_html("s", runs, [], "2026-06-29 09:30")
         self.assertIn("topic A", html_out)
         self.assertIn("topic B", html_out)
         self.assertIn("video A", html_out)
         self.assertIn("video B", html_out)
         self.assertIn("已收录 2 个主题", html_out)
+
+    def test_renders_rank_per_video(self):
+        runs = [{"topic": "t", "videos": [
+            _video(rank=1, title="a"),
+            _video(rank=2, title="b"),
+            _video(rank=3, title="c"),
+        ]}]
+        html_out = render_email_html("s", runs, [], "2026-06-29 09:30")
+        import re
+        cells = re.findall(r'<td style="border:1px solid #d9d9d9[^"]*">([0-9]+)</td>', html_out)
+        self.assertEqual(cells[:3], ["1", "2", "3"])
+
+    def test_reads_view_count_from_statistics(self):
+        video = {
+            "rank": 1,
+            "title": "video",
+            "url": "https://www.youtube.com/watch?v=v1",
+            "channel_title": "ch",
+            "published_at": "2026-06-29T00:00:00Z",
+            "topic_score": 0.5,
+            "duration_seconds": 60,
+            "statistics": {"view_count": 5000},
+        }
+        runs = [{"topic": "t", "videos": [video]}]
+        html_out = render_email_html("s", runs, [], "2026-06-29 09:30")
+        self.assertIn("5,000", html_out)
+
+    def test_reads_view_count_from_statistics_viewcount_camel(self):
+        video = {
+            "rank": 1,
+            "title": "video",
+            "url": "https://www.youtube.com/watch?v=v1",
+            "channel_title": "ch",
+            "published_at": "2026-06-29T00:00:00Z",
+            "topic_score": 0.5,
+            "duration_seconds": 60,
+            "statistics": {"viewCount": 7777},
+        }
+        runs = [{"topic": "t", "videos": [video]}]
+        html_out = render_email_html("s", runs, [], "2026-06-29 09:30")
+        self.assertIn("7,777", html_out)
+
+    def test_formats_generated_at_human_readable(self):
+        runs = [{"topic": "t", "videos": [_video()]}]
+        html_out = render_email_html("s", runs, [], "2026-06-29 11:10")
+        self.assertIn("2026-06-29 11:10", html_out)
+        self.assertNotIn("T11:10:58", html_out)
+        self.assertNotIn(".168883", html_out)
+
+    def test_truncates_thai_channel_preserves_chars(self):
+        long_thai = "\u0e25\u0e07\u0e17\u0e38\u0e19\u0e2d\u0e30\u0e44\u0e23\u0e14\u0e35" * 20
+        runs = [{"topic": "t", "videos": [_video(channel_title=long_thai)]}]
+        html_out = render_email_html("s", runs, [], "2026-06-29 09:30")
+        import re
+        m = re.search(r"max-width:220px[^>]*>([^<]+)</td>", html_out)
+        self.assertIsNotNone(m)
+        cell = m.group(1)
+        self.assertLessEqual(len(cell), 60)
+        self.assertTrue(cell.endswith("\u2026"))
+        # Thai characters must be preserved, not replaced with spaces
+        self.assertIn("\u0e25", cell)
+        self.assertIn("\u0e35", cell)
 
 
 if __name__ == "__main__":

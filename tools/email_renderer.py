@@ -47,7 +47,13 @@ def _render_video_row(video: dict) -> str:
     score = float(video.get("topic_score") or 0)
     published_at = html.escape(str(video.get("published_at") or "")[:10])
     duration = html.escape(_format_duration(video.get("duration_seconds")))
-    views = int(video.get("view_count") or 0)
+    statistics = video.get("statistics") or {}
+    views = int(
+        video.get("view_count")
+        or statistics.get("view_count")
+        or statistics.get("viewCount")
+        or 0
+    )
     return (
         "<tr>"
         f'<td style="{_CELL_BASE}">{rank}</td>'
@@ -131,7 +137,7 @@ def render_email_html(
     return (
         template
         .replace("{{subject}}", html.escape(subject))
-        .replace("{{generated_at}}", html.escape(generated_at))
+        .replace("{{formatted_at}}", html.escape(generated_at))
         .replace("{{count}}", str(len(runs)))
         .replace("{{topic_sections}}", topic_sections)
         .replace("{{failure_section}}", _render_failure_section(failures))

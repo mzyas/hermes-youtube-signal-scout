@@ -33,7 +33,7 @@ class SanitizeChannelTitleTests(unittest.TestCase):
     def test_strips_html_like_tags(self):
         self.assertEqual(
             sanitize_channel_title("<b>Channel</b>"),
-            "b Channel /b",
+            "Channel",
         )
 
     def test_keeps_cjk(self):
@@ -70,6 +70,33 @@ class SanitizeChannelTitleTests(unittest.TestCase):
         second = sanitize_channel_title(first)
         self.assertEqual(first, second)
 
+    def test_keeps_thai(self):
+        self.assertEqual(sanitize_channel_title("\u0e25\u0e07\u0e17\u0e38\u0e19\u0e2d\u0e30\u0e44\u0e23\u0e14\u0e35"), "\u0e25\u0e07\u0e17\u0e38\u0e19\u0e2d\u0e30\u0e44\u0e23\u0e14\u0e35")
+
+    def test_keeps_korean_hangul(self):
+        self.assertEqual(sanitize_channel_title("\ud55c\uad6d\uacbd\uc81c\ub274\uc2a4"), "\ud55c\uad6d\uacbd\uc81c\ub274\uc2a4")
+
+    def test_keeps_devanagari(self):
+        self.assertEqual(sanitize_channel_title("\u0928\u093f\u0935\u0947\u0936 \u0938\u092e\u093e\u091a\u093e\u0930"), "\u0928\u093f\u0935\u0947\u0936 \u0938\u092e\u093e\u091a\u093e\u0930")
+
+    def test_keeps_cyrillic(self):
+        self.assertEqual(sanitize_channel_title("\u0420\u043e\u0441\u0441\u0438\u044f \u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430"), "\u0420\u043e\u0441\u0441\u0438\u044f \u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430")
+
+    def test_keeps_latin_extended(self):
+        self.assertEqual(sanitize_channel_title("Caf\u00e9 M\u00fcller"), "Caf\u00e9 M\u00fcller")
+
+    def test_keeps_arabic(self):
+        self.assertEqual(sanitize_channel_title("\u0627\u0644\u0627\u0633\u062a\u062b\u0645\u0627\u0631"), "\u0627\u0644\u0627\u0633\u062a\u062b\u0645\u0627\u0631")
+
+    def test_keeps_vietnamese(self):
+        self.assertEqual(sanitize_channel_title("\u0110\u1ea7u t\u01b0"), "\u0110\u1ea7u t\u01b0")
+
+    def test_still_strips_html_tags(self):
+        self.assertEqual(
+            sanitize_channel_title("<script>alert(1)</script>title"),
+            "alert(1) title",
+        )
+
 
 class SanitizeChannelTitleForEmailTests(unittest.TestCase):
     def test_short_value_unchanged(self):
@@ -82,6 +109,7 @@ class SanitizeChannelTitleForEmailTests(unittest.TestCase):
         long = "A" * 200
         result = sanitize_channel_title_for_email(long)
         self.assertEqual(len(result), 60)
+        self.assertTrue(result.endswith("\u2026"))
 
     def test_custom_max_len(self):
         long = "A" * 100
@@ -95,17 +123,22 @@ class SanitizeChannelTitleForEmailTests(unittest.TestCase):
         self.assertEqual(len(result), 15)
         self.assertNotIn("\u2022", result)
         self.assertNotIn("views", result)
+        self.assertTrue(result.endswith("\u2026"))
 
     def test_cjk_handling(self):
         result = sanitize_channel_title_for_email(
             "\u8cc7\u683c\u306e\u5b66\u6821TAC \u516c\u5f0f", max_len=10
         )
         self.assertEqual(len(result), 10)
-        self.assertEqual(result, result.rstrip(" _.-"))
+        self.assertTrue(result.endswith("\u2026"))
 
     def test_empty_and_none(self):
         self.assertEqual(sanitize_channel_title_for_email(""), "")
         self.assertEqual(sanitize_channel_title_for_email(None), "")
+
+    def test_keeps_thai_through_email(self):
+        text = "\u0e25\u0e07\u0e17\u0e38\u0e19\u0e2d\u0e30\u0e44\u0e23\u0e14\u0e35"
+        self.assertEqual(sanitize_channel_title_for_email(text), text)
 
 
 class SanitizeTitleForEmailTests(unittest.TestCase):
@@ -116,6 +149,7 @@ class SanitizeTitleForEmailTests(unittest.TestCase):
         long = "A" * 500
         result = sanitize_title_for_email(long)
         self.assertEqual(len(result), 80)
+        self.assertTrue(result.endswith("\u2026"))
 
     def test_custom_max_len(self):
         result = sanitize_title_for_email("A" * 200, max_len=50)
@@ -125,7 +159,12 @@ class SanitizeTitleForEmailTests(unittest.TestCase):
         result = sanitize_title_for_email("<script>alert(1)</script>title")
         self.assertNotIn("<", result)
         self.assertNotIn(">", result)
+        self.assertNotIn("script", result)
         self.assertIn("title", result)
+
+    def test_keeps_thai_in_title(self):
+        text = "\u0e27\u0e34\u0e40\u0e04\u0e23\u0e32\u0e30\u0e2b\u0e4c\u0e2b\u0e38\u0e49\u0e19 (NASDAQ: KEEL)"
+        self.assertEqual(sanitize_title_for_email(text), text)
 
     def test_strips_pollution_delimiters(self):
         result = sanitize_title_for_email(
