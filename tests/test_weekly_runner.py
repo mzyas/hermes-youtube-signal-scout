@@ -79,6 +79,7 @@ class WeeklyRunnerTests(unittest.TestCase):
         self.assertEqual(handoff["action"], "send_email")
         self.assertEqual(handoff["recipients"], ["analyst@example.com"])
         self.assertEqual(handoff["subject"], "Weekly Signals")
+        self.assertEqual(handoff["content_type"], "text/html; charset=utf-8")
         self.assertEqual(len(handoff["sections"]), 2)
         self.assertIn("<html>", handoff["html_body"])
         self.assertIn("global economy", handoff["html_body"])

@@ -23,11 +23,16 @@ triggering the command at the configured time.
 
 When `email_handoff.action` is `send_email`:
 
-1. Send the pre-rendered `email_handoff.html_body` as the email body.
+1. Send the pre-rendered `email_handoff.html_body` using
+   `email_handoff.content_type` (`text/html; charset=utf-8`). Map it to the
+   email tool's explicit HTML-body or content-type option.
 2. Use `email_handoff.recipients` and `email_handoff.subject`.
 3. Treat email delivery status separately from the search `status`.
 4. Failed topics are already inlined in the HTML under "失败主题" — do not
    filter them out.
+5. Never pass `html_body` to a plain-text or Markdown body field. If the email
+   tool has no HTML mode, do not send the raw source; return an unsupported
+   delivery status instead.
 
 The HTML body is built by `tools/email_renderer.py` from
 `tools/email_template.html`; it is designed to render correctly in Outlook

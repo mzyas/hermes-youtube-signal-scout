@@ -41,11 +41,12 @@
     },
     "email_handoff": {
       "type": "object",
-      "required": ["action", "recipients", "subject", "html_body", "sections"],
+      "required": ["action", "recipients", "subject", "content_type", "html_body", "sections"],
       "properties": {
         "action": {"const": "send_email"},
         "recipients": {"type": "array", "items": {"type": "string"}},
         "subject": {"type": "string"},
+        "content_type": {"const": "text/html; charset=utf-8"},
         "html_body": {"type": "string"},
         "sections": {"type": "array", "items": {"type": "object"}}
       }

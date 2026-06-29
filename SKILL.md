@@ -48,9 +48,13 @@ The stable weekly Python interface is
 
 The external scheduler invokes the weekly interface, for example every Monday
 morning. The Skill performs search and report assembly but does not schedule
-itself or send email directly. It returns `email_handoff`; the agent must convert
-`markdown_body` to semantic HTML, preserve every video's information, and send
-it through the available email tool to `recipients`.
+itself or send email directly. It returns a pre-rendered
+`email_handoff.html_body`; send it with the declared
+`email_handoff.content_type` (`text/html; charset=utf-8`) through the available
+email tool to `recipients`. Use the tool's explicit HTML-body or content-type
+option. Never put `html_body` into a plain-text or Markdown body field; if the
+tool cannot send HTML, report delivery as unsupported instead of sending the
+HTML source as visible text.
 
 Only perform HTML rendering and email delivery after an explicit
 `run_weekly()`/weekly CLI invocation. A normal `run()` result must never trigger

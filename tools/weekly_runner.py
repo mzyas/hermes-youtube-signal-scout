@@ -126,6 +126,7 @@ def run_weekly(config: dict, client=None) -> dict:
             "action": "send_email",
             "recipients": recipients,
             "subject": subject,
+            "content_type": "text/html; charset=utf-8",
             "html_body": _build_email_html(subject, sections, failures, formatted_at),
             "sections": sections,
         },
