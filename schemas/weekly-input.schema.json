@@ -33,6 +33,8 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "account": {"type": "string", "minLength": 1},
+        "sender": {"type": "string", "format": "email"},
         "recipients": {
           "type": "array",
           "items": {"type": "string", "format": "email"},

@@ -39,7 +39,11 @@ def validate_weekly_config(config: dict) -> None:
         return
     schema = json.loads(WEEKLY_INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
     try:
-        jsonschema.validate(config, schema)
+        jsonschema.validate(
+            config,
+            schema,
+            format_checker=jsonschema.FormatChecker(),
+        )
     except jsonschema.ValidationError as exc:
         path = ".".join(str(part) for part in exc.absolute_path)
         prefix = f"{path}: " if path else ""
@@ -70,21 +74,59 @@ def _build_email_html(subject: str, runs: list[dict], failures: list[dict], gene
     return render_email_html(subject, runs, failures, generated_at)
 
 
+def _build_mml_template(
+    sender: str,
+    recipients: list[str],
+    subject: str,
+    html_body: str,
+) -> str:
+    return (
+        f"From: {sender}\n"
+        f"To: {', '.join(recipients)}\n"
+        f"Subject: {subject}\n\n"
+        "<#part type=text/html>\n"
+        f"{html_body}\n"
+        "<#/part>\n"
+    )
+
+
+def _require_header_value(name: str, value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigurationError(f"email.{name} must be a non-empty string")
+    if "\r" in value or "\n" in value:
+        raise ConfigurationError(f"email.{name} must not contain newlines")
+    return value.strip()
+
+
+def _email_config(config: dict) -> tuple[str, str, list[str], str | None]:
+    email = config.get("email")
+    if not isinstance(email, dict):
+        raise ConfigurationError("email must be an object/mapping")
+    account = _require_header_value("account", email.get("account"))
+    sender = _require_header_value("sender", email.get("sender"))
+    recipients = email.get("recipients")
+    if not isinstance(recipients, list) or not recipients:
+        raise ConfigurationError("email.recipients must be a non-empty array of strings")
+    normalized_recipients = [
+        _require_header_value(f"recipients[{index}]", value)
+        for index, value in enumerate(recipients)
+    ]
+    subject = email.get("subject")
+    if subject is not None:
+        subject = _require_header_value("subject", subject)
+    return account, sender, normalized_recipients, subject
+
+
 def run_weekly(config: dict, client=None) -> dict:
     """Run multiple topic searches and return a scheduler/email handoff payload."""
     validate_weekly_config(config)
+    account, sender, recipients, configured_subject = _email_config(config)
     topic_configs = _topic_configs(config)
     schedule = deepcopy(config.get("schedule") or {})
     if not isinstance(schedule, dict):
         raise ConfigurationError("schedule must be an object/mapping")
     schedule.setdefault("cron", "0 9 * * 1")
     schedule.setdefault("timezone", "Asia/Tokyo")
-    email = deepcopy(config.get("email") or {})
-    if not isinstance(email, dict):
-        raise ConfigurationError("email must be an object/mapping")
-    recipients = email.get("recipients") or []
-    if not isinstance(recipients, list) or any(not isinstance(value, str) for value in recipients):
-        raise ConfigurationError("email.recipients must be an array of strings")
     continue_on_error = bool(config.get("continue_on_error", True))
     runs: list[dict] = []
     failures: list[dict] = []
@@ -103,7 +145,7 @@ def run_weekly(config: dict, client=None) -> dict:
                 raise
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     formatted_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-    subject = str(email.get("subject") or f"YouTube Weekly Signal Report - {generated_at[:10]}")
+    subject = configured_subject or f"YouTube Weekly Signal Report - {generated_at[:10]}"
     sections = [
         {
             "topic": result["topic"],
@@ -113,6 +155,7 @@ def run_weekly(config: dict, client=None) -> dict:
         }
         for result in runs
     ]
+    html_body = _build_email_html(subject, sections, failures, formatted_at)
     return {
         "generated_at": generated_at,
         "schedule": schedule,
@@ -123,12 +166,13 @@ def run_weekly(config: dict, client=None) -> dict:
         "runs": runs,
         "failures": failures,
         "email_handoff": {
-            "action": "send_email",
+            "action": "send_himalaya_template",
+            "account": account,
+            "sender": sender,
             "recipients": recipients,
             "subject": subject,
-            "content_type": "text/html; charset=utf-8",
-            "html_body": _build_email_html(subject, sections, failures, formatted_at),
-            "sections": sections,
+            "mml_template": _build_mml_template(sender, recipients, subject, html_body),
+            "retry_policy": "never_automatic",
         },
     }
 
