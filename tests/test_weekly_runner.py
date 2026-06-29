@@ -65,6 +65,29 @@ class WeeklyRunnerTests(unittest.TestCase):
         self.assertIn("AI chips", result["email_handoff"]["markdown_body"])
         self.assertIn("views", result["email_handoff"]["html_requirements"][1])
 
+    def test_html_requirements_cover_email_client_compatibility(self):
+        client = FakeYouTubeClient(["video-1"])
+        result = run_weekly({
+            "schedule": {"cron": "0 9 * * 1", "timezone": "Asia/Tokyo"},
+            "defaults": {
+                "cache_enabled": False,
+                "topic_score_threshold": 0,
+                "region_code": "JP",
+                "region_priority_tiers": [],
+                "target_results": 1,
+                "max_results": 1,
+            },
+            "topics": ["global economy"],
+            "email": {"recipients": ["analyst@example.com"], "subject": "Weekly Signals"},
+        }, client=client)
+
+        requirements = " ".join(result["email_handoff"]["html_requirements"]).lower()
+        self.assertIn("table", requirements)
+        self.assertIn("inline", requirements)
+        self.assertIn("outlook", requirements)
+        self.assertIn("gmail", requirements)
+        self.assertIn("ellipsis", requirements)
+
     def test_requires_non_empty_topics(self):
         with self.assertRaisesRegex(ConfigurationError, "topics"):
             run_weekly({"topics": []}, client=FakeYouTubeClient())
