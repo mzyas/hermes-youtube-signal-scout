@@ -92,6 +92,7 @@ def base_config(**overrides):
         "zones": [],
         "region_code": "JP",
         "region_priority_tiers": [],
+        "published_after": "2026-06-01T00:00:00Z",
     }
     config.update(overrides)
     return config

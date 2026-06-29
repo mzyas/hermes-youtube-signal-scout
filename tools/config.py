@@ -123,10 +123,12 @@ def _manual_validate(config: dict) -> None:
 
 
 def validate_config(config: dict) -> None:
+    # Keep user-facing validation errors stable whether jsonschema is installed
+    # or not; the schema pass below still covers constraints not checked here.
+    _manual_validate(config)
     try:
         import jsonschema
     except ImportError:
-        _manual_validate(config)
         return
     schema = json.loads(INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
     try:
@@ -135,7 +137,6 @@ def validate_config(config: dict) -> None:
         path = ".".join(str(part) for part in exc.absolute_path)
         prefix = f"{path}: " if path else ""
         raise ConfigurationError(f"{prefix}{exc.message}") from exc
-    _manual_validate(config)
 
 
 def apply_defaults(config: dict) -> dict:
