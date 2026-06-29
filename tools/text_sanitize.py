@@ -10,6 +10,7 @@ import re
 import unicodedata
 
 _MAX_CHANNEL_TITLE_LEN = 200
+_EMAIL_CHANNEL_TITLE_MAX_LEN = 40
 
 _DISALLOWED = re.compile(
     r"[^\w \t\u3000\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff"
@@ -41,4 +42,18 @@ def sanitize_channel_title(value: object) -> str:
         return ""
     if len(text) > _MAX_CHANNEL_TITLE_LEN:
         text = text[:_MAX_CHANNEL_TITLE_LEN].rstrip(" _.-")
+    return text
+
+
+def sanitize_channel_title_for_email(value: object, max_len: int = _EMAIL_CHANNEL_TITLE_MAX_LEN) -> str:
+    """Return a strict-whitelist-cleaned channel title suitable for email cells.
+
+    Applies the same sanitization as :func:`sanitize_channel_title` then caps
+    the result at ``max_len`` characters (default 40). 40 is the empirical cap
+    that survives Outlook's Word engine (which ignores ``text-overflow:ellipsis``)
+    and most modern clients at the typical channel column width.
+    """
+    text = sanitize_channel_title(value)
+    if len(text) > max_len:
+        text = text[:max_len].rstrip(" _.-")
     return text

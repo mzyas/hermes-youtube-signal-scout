@@ -65,8 +65,20 @@ def _topic_configs(config: dict) -> list[dict]:
 
 
 def _build_email_markdown(subject: str, runs: list[dict], failures: list[dict]) -> str:
+    from copy import deepcopy
+
+    from .md_writer import render_markdown_report
+    from .text_sanitize import sanitize_channel_title_for_email
+
     sections = [f"# {subject}"]
-    sections.extend(result["report_markdown"] for result in runs)
+    for result in runs:
+        topic_config = result.get("_email_topic_config") or {}
+        email_output = deepcopy(result)
+        for video in email_output.get("videos") or []:
+            video["channel_title"] = sanitize_channel_title_for_email(
+                video.get("channel_title", "")
+            )
+        sections.append(render_markdown_report(email_output, topic_config))
     if failures:
         sections.append("## Failed Topics")
         sections.extend(
@@ -96,7 +108,9 @@ def run_weekly(config: dict, client=None) -> dict:
     failures: list[dict] = []
     for topic_config in topic_configs:
         try:
-            runs.append(run(topic_config, client=client))
+            run_result = run(topic_config, client=client)
+            run_result["_email_topic_config"] = deepcopy(topic_config)
+            runs.append(run_result)
         except (SignalScoutError, OSError, ValueError) as exc:
             failure = {
                 "topic": topic_config["topic"],

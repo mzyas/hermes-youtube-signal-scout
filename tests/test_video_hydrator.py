@@ -1,6 +1,6 @@
 import unittest
 
-from tools.text_sanitize import sanitize_channel_title
+from tools.text_sanitize import sanitize_channel_title, sanitize_channel_title_for_email
 from tools.video_hydrator import hydrate_videos, parse_video_resource
 
 
@@ -65,6 +65,43 @@ class SanitizeChannelTitleTests(unittest.TestCase):
         first = sanitize_channel_title("SurTaal Studios \u2022 2.3M views \u2022 2 days ago")
         second = sanitize_channel_title(first)
         self.assertEqual(first, second)
+
+
+class SanitizeChannelTitleForEmailTests(unittest.TestCase):
+    def test_short_value_unchanged(self):
+        self.assertEqual(
+            sanitize_channel_title_for_email("SurTaal Studios"),
+            "SurTaal Studios",
+        )
+
+    def test_default_max_len_is_40(self):
+        long = "A" * 200
+        result = sanitize_channel_title_for_email(long)
+        self.assertEqual(len(result), 40)
+
+    def test_custom_max_len(self):
+        long = "A" * 100
+        result = sanitize_channel_title_for_email(long, max_len=20)
+        self.assertEqual(len(result), 20)
+
+    def test_strips_pollution_then_truncates(self):
+        result = sanitize_channel_title_for_email(
+            "SurTaal Studios \u2022 2.3M views \u2022 2 days ago", max_len=15
+        )
+        self.assertEqual(len(result), 15)
+        self.assertNotIn("\u2022", result)
+        self.assertNotIn("views", result)
+
+    def test_cjk_handling(self):
+        result = sanitize_channel_title_for_email(
+            "\u8cc7\u683c\u306e\u5b66\u6821TAC \u516c\u5f0f", max_len=10
+        )
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result, result.rstrip(" _.-"))
+
+    def test_empty_and_none(self):
+        self.assertEqual(sanitize_channel_title_for_email(""), "")
+        self.assertEqual(sanitize_channel_title_for_email(None), "")
 
 
 def _resource(video_id: str, channel_title: str) -> dict:
