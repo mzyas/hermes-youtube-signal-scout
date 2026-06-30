@@ -151,7 +151,7 @@ def run(config: dict, client=None) -> dict:
         "published_before": config.get("published_before"),
         "region_code": config.get("region_code"),
         "relevance_language": config.get("relevance_language"),
-        "order": config.get("order", "date"),
+        "order": config.get("order", "relevance"),
         "channels": [],
     }
     mode = config["mode"]

@@ -118,7 +118,7 @@ def search_videos(
     base_params = {
         "part": "snippet",
         "type": "video",
-        "order": config.get("order", "date"),
+        "order": config.get("order", "relevance"),
         "maxResults": candidates_per_page,
         "safeSearch": config.get("safe_search", "moderate"),
     }

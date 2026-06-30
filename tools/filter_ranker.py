@@ -574,7 +574,7 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
             "published_before": config.get("published_before"),
             "region_code": config.get("region_code"),
             "relevance_language": config.get("relevance_language"),
-            "order": config.get("order", "date"),
+            "order": config.get("order", "relevance"),
         },
         "quota_usage_estimate": config.get("quota_usage_estimate", {}),
         "videos": accepted[:limit],

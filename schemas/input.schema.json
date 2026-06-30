@@ -47,7 +47,7 @@
     "published_after": {"type": ["string", "null"], "format": "date-time"},
     "published_before": {"type": ["string", "null"], "format": "date-time"},
     "lookback_days": {"type": ["integer", "null"], "minimum": 1, "default": 7},
-    "order": {"type": "string", "enum": ["date", "relevance", "viewCount", "rating"], "default": "date"},
+    "order": {"type": "string", "enum": ["date", "relevance", "viewCount", "rating"], "default": "relevance"},
     "max_results": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
     "target_results": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
     "max_videos_per_channel": {"type": "integer", "minimum": 1, "maximum": 50, "default": 1},
