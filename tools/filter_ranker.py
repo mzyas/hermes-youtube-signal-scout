@@ -450,13 +450,8 @@ def _channel_key(video: dict) -> str:
 
 
 def _rank_key(video: dict) -> tuple:
-    published_at = _parse_dt(video.get("published_at"))
-    published_timestamp = published_at.timestamp() if published_at else float("-inf")
     return (
         -float(video.get("topic_score") or 0),
-        -published_timestamp,
-        -_stat(video, "view_count"),
-        int(video.get("_candidate_index") or 0),
     )
 
 
