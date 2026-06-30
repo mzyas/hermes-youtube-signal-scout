@@ -121,6 +121,10 @@ def _hydrate_with_cache(
         )
     if connection:
         try:
+            for video_id, video in cached.items():
+                previous = get_previous_statistics(connection, video_id)
+                if previous:
+                    video["previous_statistics"] = previous
             for video in fresh:
                 previous = get_previous_statistics(connection, video["video_id"])
                 if previous:

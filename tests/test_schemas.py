@@ -2,6 +2,12 @@ import json
 import unittest
 from pathlib import Path
 
+try:
+    from referencing import Registry, Resource
+    _HAS_REFERENCING = True
+except ImportError:
+    _HAS_REFERENCING = False
+
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = ROOT / "schemas"
 
@@ -35,16 +41,30 @@ class SchemaTests(unittest.TestCase):
 
         result_schema = json.loads((SCHEMAS / "result.schema.json").read_text(encoding="utf-8"))
         video_schema = json.loads((SCHEMAS / "video.schema.json").read_text(encoding="utf-8"))
-        resolver = jsonschema.RefResolver(
-            base_uri=SCHEMAS.as_uri() + "/",
-            referrer=result_schema,
-            store={(SCHEMAS / "video.schema.json").as_uri(): video_schema},
-        )
-        jsonschema.Draft202012Validator(
-            result_schema,
-            resolver=resolver,
-            format_checker=jsonschema.FormatChecker(),
-        ).validate({
+        result_schema = dict(result_schema)
+        result_schema["$id"] = (SCHEMAS / "result.schema.json").as_uri()
+        if _HAS_REFERENCING:
+            registry = Registry().with_resource(
+                (SCHEMAS / "video.schema.json").as_uri(),
+                Resource.from_contents(video_schema),
+            )
+            validator = jsonschema.Draft202012Validator(
+                result_schema,
+                registry=registry,
+                format_checker=jsonschema.FormatChecker(),
+            )
+        else:
+            resolver = jsonschema.RefResolver(
+                base_uri=SCHEMAS.as_uri() + "/",
+                referrer=result_schema,
+                store={(SCHEMAS / "video.schema.json").as_uri(): video_schema},
+            )
+            validator = jsonschema.Draft202012Validator(
+                result_schema,
+                resolver=resolver,
+                format_checker=jsonschema.FormatChecker(),
+            )
+        validator.validate({
             "run_id": "run",
             "skill": "hermes-youtube-signal-scout",
             "version": "0.4.2",

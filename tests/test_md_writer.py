@@ -109,7 +109,7 @@ class MarkdownWriterTests(unittest.TestCase):
             self.assertNotIn("output_files", result)
             self.assertEqual(list(Path(temp_dir).iterdir()), [])
 
-    def test_filter_and_rank_writes_when_output_dir_is_set(self):
+    def test_filter_and_rank_does_not_write_even_with_output_dir(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             result = filter_and_rank(
                 [],
@@ -120,8 +120,8 @@ class MarkdownWriterTests(unittest.TestCase):
                     "quota_usage_estimate": {"estimated_quota_cost": 0},
                 },
             )
-            self.assertTrue(Path(result["output_files"]["markdown"]).exists())
-            self.assertTrue(Path(result["output_files"]["json"]).exists())
+            self.assertNotIn("output_files", result)
+            self.assertEqual(list(Path(temp_dir).iterdir()), [])
 
 
 if __name__ == "__main__":

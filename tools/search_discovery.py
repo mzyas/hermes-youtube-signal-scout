@@ -89,7 +89,7 @@ def resolve_region_tiers(config: dict) -> list[list[str | None]]:
 
 def query_for_region(config: dict, region_code: str | None) -> tuple[str, str | None]:
     """Return the localized query and search-language hint for one region."""
-    language = REGION_SEARCH_LANGUAGES.get(str(region_code)) if region_code else None
+    language = REGION_SEARCH_LANGUAGES.get(region_code) if region_code else None
     localized_queries = config.get("localized_queries") or {}
     terms = localized_queries.get(language) if language and isinstance(localized_queries, dict) else None
     if not isinstance(terms, list):

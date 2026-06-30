@@ -495,19 +495,19 @@ def _apply_channel_limit(
 
 def filter_and_rank(videos: list[dict], config: dict) -> dict:
     now = datetime.now(timezone.utc)
+    video_flags = [_quality_flags(v, config) for v in videos]
     eligible_videos = [
         video
-        for video in videos
-        if not _hard_reject_reason(video, config, _quality_flags(video, config))
+        for video, flags in zip(videos, video_flags)
+        if not _hard_reject_reason(video, config, flags)
     ]
     velocity_scores = _velocity_percentiles(eligible_videos, now)
     engagement_baseline = _engagement_baseline(eligible_videos)
     accepted: list[dict] = []
     rejected: list[dict] = []
-    threshold_value = config.get("topic_score_threshold", 0.55)
-    threshold = 0.55 if threshold_value is None else float(threshold_value)
-    for candidate_index, video in enumerate(videos):
-        flags = _quality_flags(video, config)
+    threshold_value = config.get("topic_score_threshold", 0.45)
+    threshold = 0.45 if threshold_value is None else float(threshold_value)
+    for candidate_index, (video, flags) in enumerate(zip(videos, video_flags)):
         reason = _hard_reject_reason(video, config, flags)
         if reason:
             rejected.append({"video_id": video.get("video_id"), "title": video.get("title", ""), "reason": reason})
@@ -580,9 +580,4 @@ def filter_and_rank(videos: list[dict], config: dict) -> dict:
         "videos": accepted[:limit],
         "rejected": rejected,
     }
-    output_dir = config.get("output_dir")
-    if output_dir:
-        from .md_writer import write_markdown_report
-
-        write_markdown_report(result, str(output_dir), config)
     return result
