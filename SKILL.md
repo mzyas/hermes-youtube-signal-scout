@@ -139,5 +139,5 @@ After a successful run, use one canonical presentation:
 
 ```powershell
 python -m unittest discover -s tests -p 'test_*.py'
-python C:\Users\mzyas\.codex\skills\.system\skill-creator\scripts\quick_validate.py .
+python <skill-creator>\scripts\quick_validate.py .   # <skill-creator> = local skill-creator install
 ```
