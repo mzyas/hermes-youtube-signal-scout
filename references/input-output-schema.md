@@ -14,6 +14,7 @@ channel_ids: ["UCxxxxxxxxxxxxxxxxxxxxxx"]
 channel_urls: ["https://www.youtube.com/@example"]
 published_after: "2026-06-01T00:00:00Z"
 lookback_days: 7
+order: relevance
 zones: [east_asia, europe, north_america]
 region_code: null
 region_codes: []
@@ -64,6 +65,14 @@ must use `/channel/UC...` or `/@handle`.
 When `published_after` is omitted, `lookback_days: 7` generates a rolling
 seven-day UTC start time. Set an explicit `published_after` to override it, or
 set `lookback_days: null` to disable the default time window.
+
+`order` accepts `relevance` (default), `date`, `viewCount`, or `rating` and is
+passed directly to the YouTube `search.list` `order` parameter. It affects
+recall, not just presentation: different `order` values return materially
+different candidate sets with limited overlap. The local six-dimension model
+re-ranks whatever candidates come back, but the candidate pool itself changes.
+Keep `order` fixed across recurring runs (for example weekly monitoring), or
+week-over-week differences will mix recall changes with content changes.
 
 The default zone preset searches representative markets in East Asia
 (`JP`, `KR`, `TW`, `HK`), Europe (`GB`, `DE`, `FR`), and North America
@@ -137,6 +146,7 @@ The result preserves the 0.1 top-level fields and adds:
 - `run_stats.channel_duplicate_count` and `unique_channel_count`: channel
   diversity statistics for the final topic result.
 - `warnings`: non-fatal cache or output warnings.
+- `query_plan.order`: the effective `search.list` order used for recall.
 - `score_components`: weighted score contribution for each accepted video.
 - `ranking_signals`: raw six-dimension scores, smoothed engagement rate, view
   velocity, and whether velocity came from snapshots or lifetime average.

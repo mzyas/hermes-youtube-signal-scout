@@ -108,6 +108,9 @@ After a successful run, use one canonical presentation:
 ## Operating Rules
 
 - Use `search.list(type=video)` only for candidate recall.
+- `order` (default `relevance`) controls `search.list` candidate recall, not
+  just presentation. Keep it fixed across recurring comparison runs so
+  week-over-week differences reflect content, not recall changes.
 - Fetch tags, duration, statistics, and topic metadata with `videos.list`.
 - Rank with the documented six-dimension model; use cached Data API snapshots
   for view growth and Bayesian smoothing for engagement.

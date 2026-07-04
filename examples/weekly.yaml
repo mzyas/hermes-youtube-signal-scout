@@ -4,6 +4,7 @@ schedule:
 
 defaults:
   lookback_days: 7
+  order: relevance
   target_results: 10
   max_results: 10
 
